@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veritaschain.org/schemas/cap-srp/v0.1/gen-error.json",
+  "title": "CAP-SRP GEN_ERROR Event",
+  "description": "Generation error event - system failure (not policy-related)",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "timestamp",
+    "attempt_id",
+    "error_code"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7 event identifier (time-sortable)"
+    },
+    "event_type": {
+      "const": "GEN_ERROR",
+      "description": "Event type discriminator"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with timezone"
+    },
+    "chain_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Chain identifier for grouping related events"
+    },
+    "prev_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Hash of previous event"
+    },
+    "current_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of this event"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/=]+$",
+      "description": "Base64-encoded Ed25519 signature"
+    },
+    "attempt_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Reference to the GEN_ATTEMPT event"
+    },
+    "error_code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "description": "Machine-readable error code"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Human-readable error description"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier"
+    },
+    "model_id": {
+      "type": "string",
+      "description": "AI model identifier"
+    },
+    "policy_version": {
+      "type": "string",
+      "description": "Safety policy version"
+    }
+  },
+  "additionalProperties": false
+}

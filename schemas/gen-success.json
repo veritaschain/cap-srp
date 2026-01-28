@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veritaschain.org/schemas/cap-srp/v0.1/gen-success.json",
+  "title": "CAP-SRP GEN_SUCCESS Event",
+  "description": "Generation success event - content was generated",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "timestamp",
+    "attempt_id",
+    "output_hash"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7 event identifier (time-sortable)"
+    },
+    "event_type": {
+      "const": "GEN",
+      "description": "Event type discriminator"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with timezone"
+    },
+    "chain_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Chain identifier for grouping related events"
+    },
+    "prev_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Hash of previous event"
+    },
+    "current_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of this event"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/=]+$",
+      "description": "Base64-encoded Ed25519 signature"
+    },
+    "attempt_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Reference to the GEN_ATTEMPT event"
+    },
+    "output_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the generated content"
+    },
+    "c2pa_manifest_id": {
+      "type": ["string", "null"],
+      "description": "C2PA Content Credentials manifest ID (if available)"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier"
+    },
+    "model_id": {
+      "type": "string",
+      "description": "AI model identifier"
+    },
+    "policy_version": {
+      "type": "string",
+      "description": "Safety policy version"
+    }
+  },
+  "additionalProperties": false
+}

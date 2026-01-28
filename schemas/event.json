@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veritaschain.org/schemas/cap-srp/v0.1/event.json",
+  "title": "CAP-SRP Event",
+  "description": "Any CAP-SRP event. Discriminator: event_type field (const in each schema)",
+  "$comment": "Use event_type to determine which schema applies: GEN_ATTEMPT | GEN | GEN_DENY | GEN_ERROR",
+  "type": "object",
+  "required": ["event_type"],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": ["GEN_ATTEMPT", "GEN", "GEN_DENY", "GEN_ERROR"],
+      "description": "Discriminator field - determines which event schema applies"
+    }
+  },
+  "unevaluatedProperties": false,
+  "oneOf": [
+    { "$ref": "gen-attempt.json" },
+    { "$ref": "gen-success.json" },
+    { "$ref": "gen-deny.json" },
+    { "$ref": "gen-error.json" }
+  ]
+}

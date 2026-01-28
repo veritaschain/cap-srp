@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veritaschain.org/schemas/cap-srp/v0.1/gen-attempt.json",
+  "title": "CAP-SRP GEN_ATTEMPT Event",
+  "description": "Generation attempt event - logged BEFORE any safety evaluation begins",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "timestamp",
+    "prompt_hash"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7 event identifier (time-sortable)"
+    },
+    "event_type": {
+      "const": "GEN_ATTEMPT",
+      "description": "Event type discriminator"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with timezone"
+    },
+    "chain_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Chain identifier for grouping related events"
+    },
+    "prev_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Hash of previous event (null for genesis)"
+    },
+    "current_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of this event"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/=]+$",
+      "description": "Base64-encoded Ed25519 signature"
+    },
+    "prompt_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the user prompt (privacy-preserving)"
+    },
+    "user_context_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of user context data"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier for grouping user interactions"
+    },
+    "model_id": {
+      "type": "string",
+      "description": "AI model identifier and version"
+    },
+    "policy_version": {
+      "type": "string",
+      "pattern": "^v?\\d+\\.\\d+(\\.\\d+)?$",
+      "description": "Safety policy version (semver)"
+    }
+  },
+  "additionalProperties": false
+}

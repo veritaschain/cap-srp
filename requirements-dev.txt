@@ -1,0 +1,11 @@
+# Development dependencies (generated from pyproject.toml)
+# Install: pip install -e ".[dev]"
+#
+# This file is for CI/tooling that doesn't support pyproject.toml extras.
+# Source of truth is pyproject.toml [project.optional-dependencies]
+
+pytest>=7.0.0
+pytest-cov>=4.0.0
+ruff>=0.1.0
+mypy>=1.0.0
+jsonschema>=4.0.0

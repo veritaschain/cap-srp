@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veritaschain.org/schemas/cap-srp/v0.1/gen-deny.json",
+  "title": "CAP-SRP GEN_DENY Event",
+  "description": "Generation denial event - proof that content was refused",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "timestamp",
+    "attempt_id",
+    "risk_category"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7 event identifier (time-sortable)"
+    },
+    "event_type": {
+      "const": "GEN_DENY",
+      "description": "Event type discriminator"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with timezone"
+    },
+    "chain_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Chain identifier for grouping related events"
+    },
+    "prev_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Hash of previous event"
+    },
+    "current_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of this event"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/=]+$",
+      "description": "Base64-encoded Ed25519 signature"
+    },
+    "attempt_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Reference to the GEN_ATTEMPT event being denied"
+    },
+    "risk_category": {
+      "type": "string",
+      "enum": [
+        "NCII_RISK",
+        "CSAM_RISK",
+        "REAL_PERSON_DEEPFAKE",
+        "SEXUAL_EXPLICIT",
+        "VIOLENCE_GRAPHIC",
+        "HATE_CONTENT",
+        "TERRORISM",
+        "SELF_HARM",
+        "ILLEGAL_ACTIVITY",
+        "DRUG_RELATED",
+        "WEAPONS",
+        "MISINFORMATION",
+        "ELECTION_INTERFERENCE",
+        "PRIVACY_VIOLATION",
+        "PII_EXPOSURE",
+        "COPYRIGHT_VIOLATION",
+        "IDENTITY_FRAUD",
+        "DISCRIMINATION",
+        "SPAM",
+        "OTHER"
+      ],
+      "description": "Category of detected risk (per CAP-SRP taxonomy)"
+    },
+    "risk_score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence score of risk detection (0.0-1.0)"
+    },
+    "denial_reason": {
+      "type": "string",
+      "description": "Machine-readable denial reason code"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier"
+    },
+    "model_id": {
+      "type": "string",
+      "description": "AI model identifier"
+    },
+    "policy_version": {
+      "type": "string",
+      "description": "Safety policy version"
+    }
+  },
+  "additionalProperties": false
+}
