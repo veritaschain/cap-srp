@@ -1,6 +1,6 @@
 # CAP-SRP JSON Schemas
 
-JSON Schema definitions for CAP-SRP event validation.
+JSON Schema definitions for this PoC's local event format. These schemas are not the canonical CAP v1.0 schemas or a VAP v1.2 envelope. Validation does not establish CAP/VAP conformance; see the [current status and limits](../README.md#canonical-specifications-and-status).
 
 ## Architecture
 

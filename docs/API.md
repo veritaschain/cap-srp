@@ -1,5 +1,7 @@
 # CAP-SRP API Reference
 
+Results concern supplied records only. No external-anchor verification or legal/CAP/VAP conformance assessment is performed. See the [canonical status and implementation limits](../README.md), including known proof/schema test failures and the JSON event-type deserialization failure.
+
 Complete API documentation for the CAP-SRP library.
 
 ## Table of Contents

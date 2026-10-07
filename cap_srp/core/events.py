@@ -1,7 +1,7 @@
 """
 CAP-SRP Event Definitions
 
-This module defines the core event types for the Content Authenticity Protocol
+This module defines the core event types for the Content / Creative AI Profile
 Safe Refusal Provenance (CAP-SRP) system.
 
 Event Types:

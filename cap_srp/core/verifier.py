@@ -7,14 +7,14 @@ This module provides verification functionality for CAP-SRP event logs:
 3. Signature Verification - verifies Ed25519 signatures
 4. Merkle Proof Verification - verifies inclusion proofs
 
-The Completeness Invariant is the core mathematical guarantee that makes
-CAP-SRP valuable for regulatory compliance:
-
-    For any time window [t₀, t₁]:
+For a closed set of recorded attempts, the expected relationship is:
     COUNT(GEN_ATTEMPT) = COUNT(GEN) + COUNT(GEN_DENY) + COUNT(GEN_ERROR)
 
-If this equation fails, it proves that events have been added, removed, or
-modified - providing mathematical fraud detection.
+This module checks supplied records only. Equal counts alone do not prove
+completeness; attempt-ID matching is also required. A mismatch may reflect
+pending work or a time-window boundary, not fraud. Independent completeness
+requires authenticated external commitments and batch-scope verification,
+which this module does not perform. Pre-measurement drops are undetectable.
 
 Usage:
     >>> from cap_srp.core.verifier import CompletenessVerifier, ChainVerifier

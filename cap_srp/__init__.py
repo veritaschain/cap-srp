@@ -1,14 +1,14 @@
 """
-CAP-SRP: Content Authenticity Protocol - Safe Refusal Provenance
+CAP-SRP: Content / Creative AI Profile - Safe Refusal Provenance
 
-Cryptographic proof that AI systems refused to generate harmful content.
+Tamper-evident records of reported AI refusal decisions.
 
 This library provides:
 - Event logging with Ed25519 signatures
 - Hash chain integrity for tamper evidence
 - Merkle tree proofs for efficient verification
 - Completeness invariant verification
-- Dashboard for compliance monitoring
+- Dashboard for recorded-outcome monitoring (not a conformance assessment)
 
 Example:
     >>> from cap_srp import CAPLogger, EventType, RiskCategory
@@ -28,7 +28,7 @@ Example:
     >>> # Verify completeness
     >>> from cap_srp import CompletenessVerifier
     >>> verifier = CompletenessVerifier()
-    >>> result = verifier.verify(logger.get_events())
+    >>> result = verifier.verify(logger.events)
     >>> print(f"Valid: {result.is_valid}")
 
 License:

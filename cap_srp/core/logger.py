@@ -264,7 +264,7 @@ class CAPLogger:
         Log a generation denial.
         
         This is the core value proposition of CAP-SRP - cryptographic
-        proof that the AI refused to generate harmful content.
+        evidence of the reported refusal, not proof of actual non-generation.
         
         Args:
             attempt_id: The event_id of the corresponding GEN_ATTEMPT

@@ -1,7 +1,7 @@
 """
 CAP-SRP Core Module
 
-This module contains the core functionality for the Content Authenticity Protocol
+This module contains the core functionality for the Content / Creative AI Profile
 Safe Refusal Provenance (CAP-SRP) system.
 
 Submodules:

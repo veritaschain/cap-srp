@@ -2,7 +2,7 @@
 
 ## Overview
 
-CAP-SRP (Content Authenticity Protocol - Safe Refusal Provenance) provides cryptographic infrastructure for proving that AI systems refused to generate harmful content.
+CAP-SRP (Content / Creative AI Profile - Safe Refusal Provenance) demonstrates tamper-evident records of reported refusal decisions. See the [README](../README.md) for canonical CAP/VAP status and proof limits. External anchoring below is an integration target, not an implemented end-to-end path.
 
 ## Core Components
 
@@ -83,21 +83,20 @@ Events are organized into a Merkle tree for efficient verification:
 **Verification Properties:**
 - O(log n) proof size for any event
 - Root can be externally anchored (TSA, blockchain)
-- Proves tree grew append-only
+- Inclusion proofs alone do not prove append-only growth or full-batch completeness
 
 ### 4. Completeness Invariant
 
-The mathematical guarantee:
+For a closed set of recorded attempts:
 
+```text
+COUNT(GEN_ATTEMPT) = COUNT(GEN) + COUNT(GEN_DENY) + COUNT(GEN_ERROR)
 ```
-For any time window [t₀, t₁]:
 
-    COUNT(GEN_ATTEMPT) = COUNT(GEN) + COUNT(GEN_DENY) + COUNT(GEN_ERROR)
-
-If this equation fails:
-    → Events have been added, removed, or modified
-    → FRAUD DETECTED
-```
+Match outcomes by attempt ID; counts alone are insufficient. Pending attempts and
+cross-boundary outcomes can cause mismatches without fraud. The PoC checks local
+records. Independent completeness requires authenticated anchors and batch scope;
+pre-measurement drops and uncommitted paired omissions remain outside the claim.
 
 ## Data Flow
 
@@ -175,13 +174,13 @@ If this equation fails:
 
 ## Security Properties
 
-| Property | Mechanism | Guarantee |
+| Property | Mechanism | Scope / limitation |
 |----------|-----------|-----------|
-| Integrity | Hash chain + signatures | Cannot modify without detection |
-| Non-repudiation | Ed25519 signatures | Signer cannot deny signing |
-| Temporal ordering | Hash chain + TSA | Events provably ordered |
-| Completeness | Invariant check | Cannot hide events |
-| Privacy | Hash-only storage | Prompts never stored |
+| Integrity | Hash chain + signatures | Detects inconsistency against verified records/commitments; not producer truth |
+| Non-repudiation | Ed25519 signatures | Attribution to a separately authenticated signing key |
+| Temporal ordering | Hash chain + TSA | Recorded order; external TSA path requires separate implementation |
+| Completeness | Invariant check | Supplied attempt/outcome consistency only; pre-measurement drops undetectable |
+| Privacy | Hash-only storage | Prompt hashes can remain linkable; free-text metadata needs privacy review |
 | Verifiability | Merkle proofs | Third parties can verify |
 
 ## Integration Patterns

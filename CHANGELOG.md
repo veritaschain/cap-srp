@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation and public claims
+- Correct repository clone paths, contributor instructions and package URLs.
+- Align CAP terminology and references with released CAP v1.0 and VAP v1.2 Draft 3.
+- Disclose the published review mapping, unresolved divergences and lack of established conformance.
+- Limit completeness claims to recorded/anchored scope; disclose pre-measurement drops and PoC anchoring limitations.
+- Replace unconditional legal compliance labels in the CLI and dashboard with local evidence results.
+
 ### Added
 - Initial project structure
 
@@ -23,8 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Merkle Tree**: Efficient inclusion proofs (O(log n))
 
 #### Completeness Invariant
-- Mathematical guarantee: `Σ ATTEMPTS = Σ GEN + Σ DENY + Σ ERROR`
-- Fraud detection when invariant is violated
+- Local attempt/outcome relationship: `Σ ATTEMPTS = Σ GEN + Σ DENY + Σ ERROR`
+- Mismatches need investigation; they are not proof of fraud or anchored completeness
 - Pending attempt detection
 - Orphan outcome detection
 - Duplicate outcome detection
@@ -65,5 +72,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RFC 3161 (Time-Stamp Protocol) ready
 - ISO/IEC 24970:2025 compatible
 
-[Unreleased]: https://github.com/veritaschain/cap-srp-dashboard/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/veritaschain/cap-srp-dashboard/releases/tag/v0.1.0
+[Unreleased]: https://github.com/veritaschain/cap-srp/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/veritaschain/cap-srp/releases/tag/v0.1.0
