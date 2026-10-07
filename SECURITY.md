@@ -82,7 +82,7 @@ The security of CAP-SRP depends on:
 1. **Hash chain integrity** - Each event links to the previous
 2. **Ed25519 signatures** - Events cannot be forged
 3. **Merkle proofs** - Third parties can verify inclusion
-4. **External anchoring** - TSA timestamps prevent backdating
+4. **External anchoring (integration target)** - Authenticated TSA evidence can independently bind a commitment to a time; submission and receipt verification are not implemented end to end in this PoC
 
 ## Best Practices
 

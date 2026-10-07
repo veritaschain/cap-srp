@@ -2,427 +2,166 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![IETF Draft](https://img.shields.io/badge/IETF-draft--kamimura--scitt--vcp-green.svg)](https://datatracker.ietf.org/doc/draft-kamimura-scitt-vcp/)
 
-**Cryptographic proof that AI systems refused to generate harmful content.**
+**Tamper-evident records of reported AI generation attempts and refusal decisions.**
 
-> "When regulators ask for evidence that your AI's safety filters worked, 'trust us' is no longer an acceptable answer."
+CAP-SRP provides a Python logging library, CLI and Streamlit dashboard for exploring recorded generation outcomes. Its demonstrations use synthetic decisions; they do not evaluate a live model's safeguards.
 
----
+## Canonical specifications and status
 
-## 🎯 What This Solves
+**CAP means Content / Creative AI Profile**, a domain profile of the **Verifiable AI Provenance Framework (VAP)**. SRP means **Safe Refusal Provenance**.
 
-### The Problem
+- [CAP v1.0 — released specification](https://github.com/veritaschain/cap-spec/blob/main/docs/CAP-Specification-v1.0.md)
+- [VAP v1.2 — framework specification](https://github.com/veritaschain/vap-spec/blob/main/spec/v1.2/VAP_Framework_Specification.md) (currently Draft 3)
+- [CAP v1.0 / VAP v1.2 Draft 3 conformance mapping](https://github.com/veritaschain/cap-spec/blob/main/docs/conformance/CAP-v1.0-VAP-v1.2-Draft3-Conformance-Mapping.md) — **review draft**
+- [Minimal change proposal](https://github.com/veritaschain/cap-spec/blob/main/docs/conformance/CAP-VAP-v1.2-Minimal-Change-Proposal.md) — **unadopted**
 
-In January 2026, the EU Commission opened a formal investigation into X/Grok after the AI generated millions of non-consensual intimate images. When asked for evidence that safety systems worked, X could only offer internal logs—**self-reported, unverifiable, and potentially modified**.
+**Status checked 2026-10-08 JST:** the mapping is published for review, but identifies unresolved normative divergences. **CAP v1.0 conformance to VAP v1.2 has not been established.** Neither publication of the mapping nor this PoC establishes conformance or certification. CAP v1.0 remains the released CAP specification; the proposal does not amend it. This repository demonstrates selected SRP mechanisms and does not claim full CAP v1.0 or VAP v1.2 conformance.
 
-Current AI systems face a fundamental accountability gap:
+In particular, CAP v1.0 permits optional external anchoring at Bronze, whereas VAP v1.2 INT-006 requires it at every conformance level. Signed batch scope, continuity, policy binding and data-model requirements also remain unresolved. A local hash chain, Merkle root or passing PoC test is not a substitute for those requirements.
 
-| Question | Current State | With CAP-SRP |
-|----------|---------------|--------------|
-| "Did your AI refuse this request?" | "Trust our logs" | Cryptographic proof |
-| "Were all dangerous requests blocked?" | "We think so" | Completeness Invariant verification |
-| "Can we independently verify?" | No | Yes, via Merkle proofs + external anchoring |
-| "Has the log been modified?" | Unknown | Mathematically impossible without detection |
+This is a **first-party PoC**, not independent implementation evidence. The [canonical CAP implementation disclosure](https://github.com/veritaschain/cap-spec#implementation-status-mandatory-disclosure) reports zero external implementations and zero Evidence Packs accepted in proceedings as of September 2026.
 
-### The Solution
+## What this PoC demonstrates
 
-CAP-SRP (Content Authenticity Protocol - Safe Refusal Provenance) creates **tamper-evident, externally verifiable records** of every AI generation request and its outcome—whether approved, denied, or failed.
+| Mechanism | Demonstrated scope | Limitation |
+| --- | --- | --- |
+| Ed25519 signatures and hash chain | Integrity checks on the supplied event records; signatures can be checked when a public key is supplied | The public key must be independently authenticated; signatures do not prove the truth of a decision |
+| Attempt/outcome verification | Counts and attempt-ID matching for `GEN`, `GEN_DENY` and `GEN_ERROR` | Checks only supplied records; not a complete VAP batch verifier |
+| Merkle tree and inclusion proofs | Experimental membership/root-checking APIs | Existing proof-verification tests fail; not independently validated. A root supplied with the same export is not an independent anchor |
+| Dashboard and reports | Record statistics and local verification results | A PASS is not legal compliance, certification or proof of model safety |
 
+**External anchoring is not implemented end to end in this PoC.** The code contains an `AnchoredMerkleRoot` data container and an optional TSA dependency, but the Quick Start does not obtain or authenticate RFC 3161 receipts, signed VAP AnchorRecords or anchor continuity. Architectural anchoring diagrams describe an integration target, not an executed verification path.
+
+## Completeness Invariant: scope and limits
+
+The canonical CAP relationship is:
+
+```text
+COUNT(GEN_ATTEMPT) = COUNT(GEN) + COUNT(GEN_DENY) + COUNT(GEN_ERROR)
 ```
-                    ┌─────────────────────────────────────────┐
-                    │         COMPLETENESS INVARIANT          │
-                    │                                         │
-                    │   Σ ATTEMPTS = Σ GEN + Σ DENY + Σ ERROR │
-                    │                                         │
-                    │   If this equation fails, fraud detected│
-                    └─────────────────────────────────────────┘
-```
 
----
+For a closed set of recorded attempts, outcomes must be linked by attempt ID and checked for missing, orphan and duplicate outcomes. **Equal aggregate counts alone are insufficient.** Attempts still in progress, or outcomes crossing a time-window boundary, must be distinguished from missing terminal outcomes; a failed check does not by itself prove fraud.
 
-## ✨ Features
+**Independent completeness claims cover recorded and externally anchored requests, at anchor/batch granularity.** Hashes, signatures, full batch scope and independently authenticated commitments must be verified separately. A Merkle inclusion proof shows membership of one event, not completeness of the entire batch.
 
-- **🔐 Cryptographic Signing**: Every event signed with Ed25519
-- **⛓️ Hash Chain Integrity**: Tamper-evident linked records
-- **🌳 Merkle Tree Proofs**: O(log n) verification of any event
-- **⏰ External Anchoring**: RFC 3161 timestamp authority support
-- **✅ Completeness Verification**: Mathematical proof that no events are missing
-- **📊 Real-time Dashboard**: Visual compliance monitoring
-- **🔍 Audit Trail Explorer**: Drill down into any decision
-- **📋 Regulatory Reports**: One-click compliance documentation
+What these mechanisms cannot establish:
 
----
+- **Pre-measurement drops:** a request never recorded as `GEN_ATTEMPT` leaves nothing to detect.
+- **Uncommitted omissions:** removing an attempt and its outcome together can preserve the count equation. Local self-consistency does not establish a complete history without an independent commitment.
+- **Truth of the underlying decision:** signed records attribute a statement to a key; they do not establish that the producer accurately described model execution or used adequate safeguards.
+- **Universal non-generation or safety:** a recorded `GEN_DENY` does not prove that harmful content never existed or was never generated elsewhere. SRP records decisions after the fact; it does not itself block, filter or prevent generation.
 
-## 🚀 Quick Start
+These limits follow the canonical CAP README and VAP v1.2 §§1.6, 4.1.7 and 11.1. See the mapping for the distinction between SRP attempt/outcome checks and VAP anchored-batch completeness.
+
+## Quick Start
 
 ### 1. Install
 
 ```bash
-git clone https://github.com/veritaschain/cap-srp-dashboard.git
-cd cap-srp-dashboard
+git clone https://github.com/veritaschain/cap-srp.git
+cd cap-srp
 
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
-
-pip install -e ".[dev]"   # includes test/lint tools
+pip install -e ".[dev]"
 ```
 
-### 2. Run Dashboard
+### 2. Run the dashboard
 
 ```bash
 streamlit run cap_srp/dashboard/app.py
 # Open http://localhost:8501
 ```
 
-### 3. Validate Schema
-
-```bash
-pytest -k schema          # schema validity + example validation
-```
-
-### 4. Generate Demo
+### 3. Generate demo records
 
 ```bash
 python examples/demo_generate_events.py --events 1000 --output data/demo_events.json
 ```
 
-### 5. Verify Completeness
+The generated records are synthetic. The local schemas describe this PoC's wire format; they are not canonical CAP/VAP conformance tests. See the known failures below before using schema validation as a gate.
+
+### 4. Check records in memory
+
+Use the Python example under **Event model** below for a working local attempt/outcome check.
+
+The JSON-file commands `cap-srp verify`, `cap-srp report` and `examples/demo_verify_completeness.py` currently encounter an event-type deserialization error on the generated demo export. They are not a working end-to-end verification path. Authenticate keys and reference commitments independently before relying on producer evidence; no command here authenticates an external anchor.
+
+## Event model
+
+| Event | Recorded meaning |
+| --- | --- |
+| `GEN_ATTEMPT` | A request was reported received before evaluation |
+| `GEN` | Successful generation was reported |
+| `GEN_DENY` | A refusal and its risk/policy context were reported |
+| `GEN_ERROR` | A technical failure was reported |
+
+Outcomes reference their attempt. The local model uses snake_case fields such as `event_id`, `attempt_id`, `prompt_hash`, `policy_version` and `model_id`. These are implementation-specific examples, not the canonical CAP v1.0 schema or a VAP v1.2 envelope. Existing event bytes and signature inputs are unchanged by this documentation alignment.
+
+```python
+from cap_srp import CAPLogger, CompletenessVerifier, RiskCategory
+
+logger = CAPLogger()
+attempt = logger.log_attempt(prompt_hash="sha256:example")
+logger.log_denial(
+    attempt_id=attempt.event_id,
+    risk_category=RiskCategory.NCII_RISK,
+    risk_score=0.94,
+)
+result = CompletenessVerifier().verify(logger.events)
+print(result.is_valid)  # Local attempt/outcome check only
+```
+
+## Regulatory relevance and legal scope
+
+Refusal records may support assessment of logging, oversight and audit obligations, including EU AI Act Article 12 where applicable. They do not establish fulfillment of those obligations, content-removal duties, retention periods or GDPR erasure requirements. A timestamp is not a retention system, and hashing a prompt does not automatically anonymize personal data.
+
+> **Legal scope (VAP v1.2 §1.6).** VAP and its domain profiles define mechanisms for producing **cryptographically verifiable evidence** of AI system decisions. Conformance to VAP or any profile: (a) does **not** constitute compliance with the EU AI Act, GDPR, MiFID II/III, CAT Rule 613, NIS2, FDA SaMD guidance, or any other law or regulation; (b) does **not** constitute a legal determination that any technical mechanism (including crypto-shredding) satisfies a specific legal obligation; (c) does **not** warrant the correctness, fairness, or safety of the underlying AI decisions — only the integrity, completeness (at anchor granularity), and attributability of their records. VAP generates evidence; competent authorities and courts evaluate it.
+
+See [regulatory relevance notes](docs/REGULATORY_MAPPING.md) for the boundary between evidence capabilities and legal determinations.
+
+## Development and tests
 
 ```bash
-python examples/demo_verify_completeness.py --input data/demo_events.json
-
-# Or via CLI
-cap-srp verify data/demo_events.json
-```
-
----
-
-## 📐 Architecture
-
-### Event Types
-
-```python
-class EventType(Enum):
-    GEN_ATTEMPT = "GEN_ATTEMPT"  # Request received (logged BEFORE evaluation)
-    GEN = "GEN"                  # Generation completed successfully
-    GEN_DENY = "GEN_DENY"        # Generation refused (safety filter triggered)
-    GEN_ERROR = "GEN_ERROR"      # Generation failed (technical error)
-```
-
-### Risk Categories (for GEN_DENY events)
-
-```python
-class RiskCategory(Enum):
-    NCII_RISK = "NCII_RISK"                    # Non-consensual intimate imagery
-    CSAM_RISK = "CSAM_RISK"                    # Child sexual abuse material
-    REAL_PERSON_DEEPFAKE = "REAL_PERSON_DEEPFAKE"  # Deepfakes of real people
-    VIOLENCE_GRAPHIC = "VIOLENCE_GRAPHIC"      # Graphic violence
-    HATE_CONTENT = "HATE_CONTENT"              # Hate speech/imagery
-    SELF_HARM = "SELF_HARM"                    # Self-harm promotion
-    ILLEGAL_ACTIVITY = "ILLEGAL_ACTIVITY"      # Illegal activities
-    OTHER = "OTHER"                            # Other policy violations
-```
-
-### Event Structure
-
-```json
-{
-  "event_id": "019478a1-b2c3-7def-8901-234567890abc",
-  "event_type": "GEN_DENY",
-  "timestamp": "2026-01-28T14:23:45.123456Z",
-  "prompt_hash": "sha256:a1b2c3d4e5f6...",
-  "user_context_hash": "sha256:f6e5d4c3b2a1...",
-  "session_id": "sess_abc123",
-  "risk_category": "NCII_RISK",
-  "risk_score": 0.94,
-  "policy_version": "v2.3.1",
-  "model_id": "image-gen-v3",
-  "previous_hash": "sha256:9876543210...",
-  "signature": "ed25519:MEUCIQDx..."
-}
-```
-
-### System Flow
-
-```
-User Request
-     │
-     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    CAP-SRP SIDECAR                          │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ Step 1: Log GEN_ATTEMPT                             │   │
-│  │         (Commitment Point - BEFORE evaluation)      │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                         │                                   │
-│                         ▼                                   │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ Step 2: Safety Evaluation                           │   │
-│  │         ├── SAFE ────► Log GEN (output_hash)       │   │
-│  │         ├── UNSAFE ──► Log GEN_DENY (risk_info)    │   │
-│  │         └── ERROR ───► Log GEN_ERROR (error_info)  │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                         │                                   │
-│                         ▼                                   │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ Step 3: Chain Linking                               │   │
-│  │         current_hash = SHA256(event + prev_hash)    │   │
-│  │         signature = Ed25519.sign(current_hash)      │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                         │                                   │
-│                         ▼                                   │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ Step 4: Merkle Tree Update (periodic)               │   │
-│  │         • Compute new Merkle root                   │   │
-│  │         • Anchor to external TSA (RFC 3161)         │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🔬 Completeness Invariant
-
-The **Completeness Invariant** is the mathematical guarantee that no events have been added, removed, or modified:
-
-```
-For any time window [t₀, t₁]:
-
-    COUNT(GEN_ATTEMPT) = COUNT(GEN) + COUNT(GEN_DENY) + COUNT(GEN_ERROR)
-```
-
-### Why This Matters
-
-1. **No Hidden Generations**: Every `GEN` must have a corresponding `GEN_ATTEMPT`
-2. **No Hidden Approvals**: Can't add fake "approvals" without the attempt record
-3. **No Deleted Denials**: Can't remove denial records without breaking the equation
-4. **Fraud Detection**: Any manipulation breaks the invariant
-
-### Verification
-
-```python
-from cap_srp.core.verifier import CompletenessVerifier
-
-verifier = CompletenessVerifier()
-result = verifier.verify(events)
-
-if result.is_valid:
-    print(f"✅ Completeness verified: {result.total_attempts} events")
-else:
-    print(f"❌ Completeness violation detected!")
-    print(f"   Expected: {result.expected_count}")
-    print(f"   Actual: {result.actual_count}")
-    print(f"   Missing: {result.missing_events}")
-```
-
----
-
-## 📊 Dashboard Screenshots
-
-### Compliance Overview
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  REFUSAL PROVENANCE DASHBOARD                                       │
-│  ═══════════════════════════════════════════════════════════════    │
-│                                                                     │
-│  System: ImageGenAI-v3.2       Status: ✅ COMPLIANT                 │
-│  Provider: Example Corp         Last Event: 2026-01-28 14:23:45    │
-│                                                                     │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  COMPLETENESS VERIFICATION                                          │
-│  ─────────────────────────────────────────────────────────────────  │
-│                                                                     │
-│  Total Attempts: 1,247,893    [████████████████████] 100%          │
-│  ├── Generated:    823,456    [█████████████░░░░░░░]  66%          │
-│  ├── Denied:       419,234    [███████░░░░░░░░░░░░░]  34%          │
-│  └── Errors:         5,203    [█░░░░░░░░░░░░░░░░░░░]  <1%          │
-│                                                                     │
-│  Invariant Status: ✅ VERIFIED (Σ = 1,247,893)                      │
-│  Hash Chain: ✅ INTACT (2,847 blocks verified)                      │
-│  External Anchor: ✅ TSA + 3 Witnesses                              │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Denial Breakdown
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  DENIAL BREAKDOWN BY RISK CATEGORY                                  │
-│  ═══════════════════════════════════════════════════════════════    │
-│                                                                     │
-│  NCII_RISK            [███████████████░░░░]  187,234  45%          │
-│  CSAM_RISK            [███████░░░░░░░░░░░░]   92,108  22%          │
-│  REAL_PERSON_DEEPFAKE [██████░░░░░░░░░░░░░]   71,456  17%          │
-│  VIOLENCE_GRAPHIC     [███░░░░░░░░░░░░░░░░]   43,234  10%          │
-│  OTHER                [██░░░░░░░░░░░░░░░░░]   25,202   6%          │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 📋 Regulatory Mapping
-
-### EU AI Act Article 12
-
-| Requirement | CAP-SRP Implementation |
-|-------------|------------------------|
-| Automatic event recording | All events logged automatically via sidecar |
-| Risk situation identification | `risk_category` + `risk_score` fields |
-| Post-market monitoring | Continuous event stream + periodic reports |
-| Deployer monitoring | Dashboard + API access for oversight |
-| Tamper-evident storage | Hash chain + Ed25519 signatures |
-| 6+ month retention | External TSA anchoring for long-term proof |
-
-### EU Digital Services Act (DSA)
-
-| Requirement | CAP-SRP Implementation |
-|-------------|------------------------|
-| Systemic risk assessment | Denial pattern analysis + anomaly detection |
-| Content moderation transparency | Public denial statistics (aggregated) |
-| Audit access | Merkle proof export for independent verification |
-| Documentation for enforcement | One-click regulatory report generation |
-
-### California AI Transparency Act (AB 853)
-
-| Requirement | CAP-SRP Implementation |
-|-------------|------------------------|
-| AI-generated content disclosure | `output_hash` + C2PA integration ready |
-| Safety measure documentation | `policy_version` + denial reasoning |
-| Audit trail maintenance | Complete event history with proofs |
-
----
-
-## 🧪 Testing
-
-```bash
-# Run all tests
 pytest tests/ -v
-
-# Run with coverage
 pytest tests/ --cov=cap_srp --cov-report=html
-
-# Run specific test file
-pytest tests/test_completeness.py -v
+pytest tests/test_verifier.py -v
 ```
 
----
-
-## 📁 Project Structure
-
-```
-cap-srp-dashboard/
-├── README.md                 # This file
-├── LICENSE                   # Apache 2.0 License
-├── requirements.txt          # Python dependencies
-├── setup.py                  # Package installation
-├── pyproject.toml           # Modern Python packaging
-├── .gitignore               # Git ignore rules
-│
-├── cap_srp/                  # Main package
-│   ├── __init__.py
-│   ├── core/                 # Core functionality
-│   │   ├── __init__.py
-│   │   ├── events.py        # Event type definitions
-│   │   ├── logger.py        # Event logging with signatures
-│   │   ├── signer.py        # Ed25519 cryptographic signing
-│   │   ├── merkle.py        # Merkle tree implementation
-│   │   └── verifier.py      # Completeness verification
-│   │
-│   ├── dashboard/            # Web dashboard
-│   │   ├── __init__.py
-│   │   └── app.py           # Streamlit dashboard
-│   │
-│   └── utils/                # Utilities
-│       ├── __init__.py
-│       └── helpers.py       # Helper functions
-│
-├── tests/                    # Test suite
-│   ├── __init__.py
-│   ├── test_events.py
-│   ├── test_logger.py
-│   ├── test_merkle.py
-│   └── test_verifier.py
-│
-├── examples/                 # Example scripts
-│   ├── demo_generate_events.py
-│   └── demo_verify_completeness.py
-│
-├── docs/                     # Documentation
-│   ├── ARCHITECTURE.md
-│   ├── API.md
-│   └── REGULATORY_MAPPING.md
-│
-└── data/                     # Sample data
-    └── .gitkeep
-```
-
----
-
-## 🔗 Related Projects
-
-- **[VCP Specification](https://github.com/veritaschain/vcp-spec)**: VeritasChain Protocol for algorithmic trading
-- **[IETF SCITT](https://datatracker.ietf.org/wg/scitt/about/)**: Supply Chain Integrity, Transparency and Trust
-- **[C2PA](https://c2pa.org/)**: Coalition for Content Provenance and Authenticity
-
----
-
-## 📄 Standards Alignment
-
-- **IETF draft-kamimura-scitt-vcp**: VCP as SCITT Profile
-- **RFC 6962**: Certificate Transparency (Merkle tree inspiration)
-- **RFC 3161**: Time-Stamp Protocol (external anchoring)
-- **ISO/IEC 24970:2025**: AI System Logging (complementary standard)
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Development Setup
+For SSH cloning:
 
 ```bash
-# Clone with SSH
-git clone git@github.com:veritaschain/cap-srp-dashboard.git
-
-# Install development dependencies
+git clone git@github.com:veritaschain/cap-srp.git
+cd cap-srp
 pip install -e ".[dev]"
-
-# Run pre-commit hooks
-pre-commit install
 ```
 
----
+See [CONTRIBUTING.md](CONTRIBUTING.md). Test success verifies tested PoC behavior, not specification conformance.
 
-## 📜 License
+### Known implementation failures
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+During the 2026-10-08 JST documentation check, the existing suite had **91 passes and 6 failures**: one Merkle proof-verification test and five schema/example-validation tests. The same six failures reproduce on the unchanged base commit `3359ea7963ea3ff8c945b9488877b5aacf89bc2c`; its UUID sorting test also failed (90 passes / 7 failures). The schema failures include a mismatch between the emitted `ed25519:` signature prefix and the schema pattern. JSON event-type deserialization also prevents the demo-file verification/report commands above from completing.
 
----
+These are existing implementation limitations, not successful conformance results. This update changes documentation and displayed/generated explanations; it does not repair cryptographic algorithms, event deserialization or schemas. The in-memory README example and event-generation demo were exercised successfully.
 
-## 📧 Contact
+## Repository guide
 
-- **Organization**: VeritasChain Standards Organization (VSO)
-- **Email**: info@veritaschain.org
-- **Website**: https://veritaschain.org
-- **IETF Draft**: https://datatracker.ietf.org/doc/draft-kamimura-scitt-vcp/
+- `cap_srp/core/`: event model, logger, signing, Merkle tree and local verifiers
+- `cap_srp/cli.py`: commands for local verification and evidence reports
+- `cap_srp/dashboard/app.py`: Streamlit demo dashboard
+- `schemas/`: local PoC JSON Schemas
+- `examples/`: synthetic record generation and verification
+- `tests/`: existing test suite
+- [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Security](SECURITY.md)
+- [Earlier SRP PoC](https://github.com/veritaschain/cap-safe-refusal-provenance): separate legacy implementation with additional limitations
 
----
+## License and contact
 
-## 🙏 Acknowledgments
+[Apache License 2.0](LICENSE). VeritasChain Standards Organization (VSO).
 
-This project builds upon:
-- The IETF SCITT Working Group's foundational work on supply chain transparency
-- Certificate Transparency (RFC 6962) concepts
-- The broader AI safety and accountability community
+- Website: https://veritaschain.org
+- Email: info@veritaschain.org
+- GitHub: https://github.com/veritaschain/cap-srp
 
----
-
-*"Verify, Don't Trust" — VeritasChain Standards Organization*
+*Verify, Don't Trust.*

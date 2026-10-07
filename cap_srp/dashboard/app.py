@@ -94,8 +94,10 @@ def render_header():
     """Render the main header."""
     st.markdown('<p class="main-header">🛡️ CAP-SRP Refusal Provenance Dashboard</p>', 
                 unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Cryptographic proof that AI systems refused to generate harmful content</p>', 
+    st.markdown('<p class="sub-header">Tamper-evident records of reported AI refusal decisions</p>',
                 unsafe_allow_html=True)
+    st.caption("PoC records only. No legal compliance or CAP/VAP conformance established. "
+               "No external anchor verification; pre-measurement drops are not detectable.")
     st.markdown("---")
 
 
@@ -108,8 +110,8 @@ def render_system_status():
     
     with col1:
         st.metric(
-            label="System Status",
-            value="✅ COMPLIANT" if stats['completeness']['is_complete'] else "❌ VIOLATION"
+            label="Local Outcome Coverage",
+            value="✅ BALANCED" if stats['completeness']['is_complete'] else "❌ VIOLATION"
         )
     
     with col2:
@@ -367,18 +369,25 @@ def render_export_section():
             )
     
     with col2:
-        st.markdown("**Compliance Report**")
+        st.markdown("**Local Evidence Report**")
         if st.button("📊 Generate Report"):
             stats = logger.get_statistics()
             verifier = CompletenessVerifier()
             result = verifier.verify(logger.events)
             
             report = f"""
-# CAP-SRP Compliance Report
+# CAP-SRP Local Evidence Report
 
 **Generated:** {datetime.now(timezone.utc).isoformat()}
 **System:** demo-image-gen-v3
 **Public Key:** {logger.public_key[:32]}...
+
+## Scope
+
+Local attempt/outcome checks only; no external anchor verification.
+Pre-measurement drops and paired omissions are not excluded. A recorded refusal
+does not prove actual non-generation. No legal compliance or CAP/VAP conformance
+is established by this report.
 
 ## Completeness Verification
 
@@ -404,7 +413,7 @@ def render_export_section():
             st.download_button(
                 "⬇️ Download Report",
                 data=report,
-                file_name=f"compliance_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                file_name=f"evidence_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                 mime="text/markdown"
             )
     
@@ -482,7 +491,7 @@ def render_sidebar():
     Part of the VeritasChain Protocol ecosystem
     for cryptographic AI audit trails.
     
-    - [GitHub](https://github.com/veritaschain/cap-srp-dashboard)
+    - [GitHub](https://github.com/veritaschain/cap-srp)
     - [Documentation](https://veritaschain.org)
     - [IETF Draft](https://datatracker.ietf.org/doc/draft-kamimura-scitt-vcp/)
     """)
@@ -528,7 +537,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.9rem;">
         <p><strong>"Verify, Don't Trust"</strong></p>
-        <p>CAP-SRP: Cryptographic proof of AI refusal provenance</p>
+        <p>CAP-SRP: Tamper-evident records of reported AI refusal decisions</p>
         <p>VeritasChain Standards Organization | info@veritaschain.org</p>
     </div>
     """, unsafe_allow_html=True)

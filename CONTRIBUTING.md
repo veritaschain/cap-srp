@@ -41,8 +41,8 @@ Feature requests are welcome! Please:
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/cap-srp-dashboard.git
-cd cap-srp-dashboard
+git clone https://github.com/YOUR_USERNAME/cap-srp.git
+cd cap-srp
 
 # Create virtual environment
 python -m venv venv
@@ -51,8 +51,8 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # Install development dependencies
 pip install -e ".[dev]"
 
-# Install pre-commit hooks
-pre-commit install
+# Run the existing checks
+pytest tests/ -v
 ```
 
 ## Code Style

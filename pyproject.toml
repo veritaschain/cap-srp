@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cap-srp"
 version = "0.1.0"
-description = "CAP-SRP: Cryptographic proof that AI systems refused to generate harmful content"
+description = "CAP-SRP: Tamper-evident records of reported AI refusal decisions"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
@@ -81,10 +81,10 @@ all = [
 
 [project.urls]
 Homepage = "https://veritaschain.org"
-Documentation = "https://github.com/veritaschain/cap-srp-dashboard#readme"
-Repository = "https://github.com/veritaschain/cap-srp-dashboard"
-Issues = "https://github.com/veritaschain/cap-srp-dashboard/issues"
-Changelog = "https://github.com/veritaschain/cap-srp-dashboard/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/veritaschain/cap-srp#readme"
+Repository = "https://github.com/veritaschain/cap-srp"
+Issues = "https://github.com/veritaschain/cap-srp/issues"
+Changelog = "https://github.com/veritaschain/cap-srp/blob/main/CHANGELOG.md"
 
 [project.scripts]
 cap-srp = "cap_srp.cli:main"

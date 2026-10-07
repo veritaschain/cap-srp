@@ -3,12 +3,13 @@
 CAP-SRP Demo: Verify Event Log Completeness
 
 This script demonstrates how to verify the Completeness Invariant
-and detect potential fraud in CAP-SRP event logs.
+for supplied CAP-SRP event logs.
 
-The Completeness Invariant guarantees:
+For a closed set of recorded attempts, the expected relationship is:
     Σ ATTEMPTS = Σ GENERATIONS + Σ DENIALS + Σ ERRORS
 
-If this equation fails, it proves tampering occurred.
+A mismatch is not proof of fraud. Local checks do not detect pre-measurement
+drops or establish externally anchored completeness or legal compliance.
 
 Usage:
     python examples/demo_verify_completeness.py -i data/events.json
