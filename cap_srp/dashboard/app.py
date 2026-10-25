@@ -488,12 +488,12 @@ def render_sidebar():
     st.sidebar.markdown("""
     **CAP-SRP Dashboard**
     
-    Part of the VeritasChain Protocol ecosystem
-    for cryptographic AI audit trails.
+    First-party PoC of CAP-SRP (Content / Creative AI
+    Profile, VAP family) for refusal-decision records.
     
     - [GitHub](https://github.com/veritaschain/cap-srp)
     - [Documentation](https://veritaschain.org)
-    - [IETF Draft](https://datatracker.ietf.org/doc/draft-kamimura-scitt-vcp/)
+    - [IETF Draft (individual submission)](https://datatracker.ietf.org/doc/draft-kamimura-scitt-refusal-events/)
     """)
     
     st.sidebar.markdown("---")

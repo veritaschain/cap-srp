@@ -16,7 +16,8 @@ CAP-SRP (Content / Creative AI Profile - Safe Refusal Provenance) demonstrates t
 │  GEN_ATTEMPT ─────────────────────────────────────────────────────  │
 │  │  • Logged BEFORE safety evaluation (Commitment Point)           │
 │  │  • Contains: prompt_hash, user_context_hash, timestamp           │
-│  │  • Purpose: Ensures every request is recorded                    │
+│  │  • Purpose: commitment point for each recorded request; a        │
+│  │    request never recorded leaves nothing to detect               │
 │  │                                                                  │
 │  ├──► GEN ────────────────────────────────────────────────────────  │
 │  │    • Logged when generation succeeds                             │

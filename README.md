@@ -28,7 +28,7 @@ This is a **first-party PoC**, not independent implementation evidence. The [can
 | --- | --- | --- |
 | Ed25519 signatures and hash chain | Integrity checks on the supplied event records; signatures can be checked when a public key is supplied | The public key must be independently authenticated; signatures do not prove the truth of a decision |
 | Attempt/outcome verification | Counts and attempt-ID matching for `GEN`, `GEN_DENY` and `GEN_ERROR` | Checks only supplied records; not a complete VAP batch verifier |
-| Merkle tree and inclusion proofs | Experimental membership/root-checking APIs | Existing proof-verification tests fail; not independently validated. A root supplied with the same export is not an independent anchor |
+| Merkle tree and inclusion proofs | Experimental membership/root-checking APIs | Existing proof-verification tests fail; not independently validated. A root supplied with the same export is not an independent anchor. The leaf input is the event hash, H(0x00 ‖ EventHash), not H(0x00 ‖ canonical(E)) as in VAP v1.2 §4.1.3 Mechanism B |
 | Dashboard and reports | Record statistics and local verification results | A PASS is not legal compliance, certification or proof of model safety |
 
 **External anchoring is not implemented end to end in this PoC.** The code contains an `AnchoredMerkleRoot` data container and an optional TSA dependency, but the Quick Start does not obtain or authenticate RFC 3161 receipts, signed VAP AnchorRecords or anchor continuity. Architectural anchoring diagrams describe an integration target, not an executed verification path.
