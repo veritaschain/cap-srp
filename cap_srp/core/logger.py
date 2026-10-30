@@ -179,8 +179,9 @@ class CAPLogger:
         """
         Log a generation attempt (commitment point).
         
-        This MUST be called BEFORE the safety evaluation to ensure
-        all requests are recorded regardless of outcome.
+        This MUST be called BEFORE the safety evaluation for requests recorded
+        through this logger. Requests that never reach the logger leave no
+        record for later completeness checks to examine.
         
         Args:
             prompt_hash: SHA-256 hash of the prompt (NOT the prompt itself)
