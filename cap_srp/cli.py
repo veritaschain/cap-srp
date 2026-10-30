@@ -26,7 +26,7 @@ from cap_srp.core.verifier import CompletenessVerifier, ChainVerifier, full_veri
 @click.group()
 @click.version_option(version=__version__)
 def main():
-    """CAP-SRP: Cryptographic AI Refusal Provenance"""
+    """CAP-SRP: Content / Creative AI Profile - Safe Refusal Provenance (first-party PoC)"""
     pass
 
 
@@ -191,7 +191,7 @@ Key Features:
 
 Links:
   • GitHub: https://github.com/veritaschain/cap-srp
-  • IETF: https://datatracker.ietf.org/doc/draft-kamimura-scitt-vcp/
+  • IETF (individual Internet-Draft, not WG-adopted): https://datatracker.ietf.org/doc/draft-kamimura-scitt-refusal-events/
   • Website: https://veritaschain.org
 
 "Verify, Don't Trust"

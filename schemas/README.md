@@ -112,19 +112,14 @@ The `risk_category` field in GEN_DENY uses the following taxonomy:
 
 ## Completeness Invariant
 
-All events must satisfy the Completeness Invariant:
+All events must satisfy the CAP v1.0 SRP attempt–outcome invariant (CAP v1.0 §13):
 
 ```
 Σ GEN_ATTEMPT = Σ GEN + Σ GEN_DENY + Σ GEN_ERROR
 ```
 
-Every GEN_ATTEMPT must have exactly one corresponding outcome event.
+Every recorded GEN_ATTEMPT must have exactly one corresponding outcome event. A request that was never recorded leaves nothing to detect. This profile-level invariant is distinct from the VAP v1.2 Completeness Invariant (INT-008).
 
 ## Standards Alignment
 
-These schemas align with:
-
-- **CAP-SRP Specification v1.0** (VSO-CAP-SRP-SPEC-001)
-- **VAP Framework v1.2** (VSO-VAP-SPEC-001)
-- **ISO/IEC DIS 24970:2025** (AI System Logging)
-- **EU AI Act Article 12** (Record-keeping requirements)
+These schemas are a local PoC format, informed by CAP v1.0 (VSO-CAP-SPEC-001) §12–§14 and the SRP event set (GEN_ATTEMPT, GEN, GEN_DENY, GEN_ERROR). They are not the CAP v1.0 Appendix A schemas and not a VAP v1.2 envelope. No conformance to CAP, VAP, ISO/IEC 24970 or any regulation is claimed.

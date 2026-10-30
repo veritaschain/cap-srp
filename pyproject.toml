@@ -13,7 +13,7 @@ authors = [
     {name = "VeritasChain Standards Organization", email = "info@veritaschain.org"}
 ]
 maintainers = [
-    {name = "Tomohiro Kamimura", email = "kamimura@veritaschain.org"}
+    {name = "Tokachi Kamimura", email = "kamimura@veritaschain.org"}
 ]
 keywords = [
     "ai-safety",
