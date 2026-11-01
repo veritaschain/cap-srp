@@ -6,7 +6,7 @@ Provides command-line tools for working with CAP-SRP event logs.
 
 Usage:
     cap-srp generate --events 1000 --output events.json
-    cap-srp verify --input events.json
+    cap-srp verify events.json
     cap-srp dashboard
     cap-srp info
 """
@@ -19,7 +19,8 @@ from datetime import datetime, timezone
 
 from cap_srp import __version__, __author__
 from cap_srp.core.logger import CAPLogger, create_demo_logger
-from cap_srp.core.events import RiskCategory, hash_data, create_event_from_dict
+from cap_srp.core.events import RiskCategory, hash_data
+from cap_srp.core.serialization import load_event_log
 from cap_srp.core.verifier import CompletenessVerifier, ChainVerifier, full_verification
 
 
@@ -28,6 +29,13 @@ from cap_srp.core.verifier import CompletenessVerifier, ChainVerifier, full_veri
 def main():
     """CAP-SRP: Content / Creative AI Profile - Safe Refusal Provenance (first-party PoC)"""
     pass
+
+
+def _load_input(input_file):
+    try:
+        return load_event_log(input_file)
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise click.ClickException(f"Invalid event log: {exc}") from exc
 
 
 @main.command()
@@ -110,10 +118,7 @@ def generate(events, denial_rate, error_rate, output, model_id, seed, verbose):
 def verify(input_file, verbose, json_output):
     """Verify CAP-SRP event log completeness and integrity."""
     
-    with open(input_file, 'r') as f:
-        data = json.load(f)
-    
-    events = [create_event_from_dict(e) for e in data.get('events', [])]
+    data, events = _load_input(input_file)
     public_key = data.get('public_key')
     expected_root = data.get('merkle_root')
     
@@ -127,13 +132,22 @@ def verify(input_file, verbose, json_output):
     )
     
     if json_output:
-        click.echo(json.dumps(result.to_dict(), indent=2))
+        output = result.to_dict()
+        output["trust_context"] = {
+            "scope": "LOCAL_SUPPLIED_RECORDS",
+            "trust_material": "FILE_DECLARED",
+            "producer_identity": "NOT_CHECKED",
+            "external_anchor": "NOT_CHECKED",
+            "source_completeness": "NOT_CHECKED",
+        }
+        click.echo(json.dumps(output, indent=2))
     else:
         if result.is_valid:
-            click.echo(click.style("✅ VERIFICATION PASSED", fg='green', bold=True))
+            click.echo(click.style("✅ LOCAL VERIFICATION PASSED", fg='green', bold=True))
         else:
             click.echo(click.style("❌ VERIFICATION FAILED", fg='red', bold=True))
             click.echo(f"Error: {result.error_message}")
+        click.echo("Key and root are file-declared; producer identity and external anchors are not authenticated.")
         
         if verbose:
             click.echo(f"\nCompleteness:")
@@ -204,10 +218,7 @@ Links:
 def report(input_file, output):
     """Generate a local evidence report, not a compliance determination."""
     
-    with open(input_file, 'r') as f:
-        data = json.load(f)
-    
-    events = [create_event_from_dict(e) for e in data.get('events', [])]
+    data, events = _load_input(input_file)
     public_key = data.get('public_key')
     merkle_root = data.get('merkle_root')
     
@@ -226,7 +237,9 @@ VERIFICATION STATUS
 Overall: {'✅ PASS' if result.is_valid else '❌ FAIL'}
 Completeness: {'✅ PASS' if result.completeness.is_valid else '❌ FAIL'}
 Chain Integrity: {'✅ PASS' if result.chain.is_valid else '❌ FAIL'}
+Signatures: {result.chain.signature_status}
 Merkle Root: {'✅ PASS' if result.merkle_root_valid else '❌ FAIL' if result.merkle_root_valid is not None else 'N/A'}
+Failure detail: {result.error_message or 'None'}
 
 STATISTICS
 ----------
@@ -244,8 +257,9 @@ Merkle Root: {merkle_root[:32] if merkle_root else 'N/A'}...
 
 SCOPE AND LIMITATIONS
 ---------------------
-Results concern supplied records only. Signatures are checked only when a
-public key is supplied; the producer's key must be authenticated separately.
+Results concern supplied records only. Missing keys cannot yield a successful
+verification. The file-declared key and root are not independent trust material;
+the producer's key must be authenticated separately.
 No external anchor or signed batch-scope verification is performed here.
 Pre-measurement drops and paired attempt/outcome omissions are not excluded.
 Recorded refusals do not prove that harmful generation never occurred.
@@ -264,6 +278,7 @@ VeritasChain Standards Organization
         click.echo(f"Report saved to: {output}")
     else:
         click.echo(report_text)
+    sys.exit(0 if result.is_valid else 1)
 
 
 if __name__ == "__main__":

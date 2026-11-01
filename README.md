@@ -139,9 +139,11 @@ pip install -e ".[dev]"
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Test success verifies tested PoC behavior, not specification conformance.
 
-### Known implementation failures
+<a id="known-implementation-failures"></a>
 
-During the 2026-10-08 JST documentation check, the existing suite had **91 passes and 6 failures**: one Merkle proof-verification test and five schema/example-validation tests. The same six failures reproduce on the unchanged base commit `3359ea7963ea3ff8c945b9488877b5aacf89bc2c`; its UUID sorting test also failed (90 passes / 7 failures). The schema failures include a mismatch between the emitted `ed25519:` signature prefix and the schema pattern. JSON event-type deserialization also prevents the demo-file verification/report commands above from completing.
+### Implementation repair history and limits
+
+During the 2026-10-08 JST documentation check, the existing suite had **91 passes and 6 failures**: one Merkle proof-verification test and five schema/example-validation tests. The same six failures reproduce on the unchanged base commit `3359ea7963ea3ff8c945b9488877b5aacf89bc2c`; its UUID sorting test also failed (90 passes / 7 failures). The schema failures included a mismatch between the emitted `ed25519:` signature prefix and the schema pattern. JSON event-type deserialization also prevented demo-file verification/report commands from completing at that point.
 
 The November 2026 verification repair addresses the Merkle target-binding and
 signature fail-open defects; see the [changed API contract and test evidence](docs/VERIFICATION-HARDENING-20261101.md).
@@ -149,8 +151,20 @@ The local JSON Schemas are also aligned with the existing serializer's
 `ed25519:` signature, `previous_hash` field and empty optional context digest.
 Unsupported signature formats remain rejected and `additionalProperties: false`
 is retained. These changes do not rewrite event hashes, signatures or normative
-CAP/VAP specifications. Event deserialization and intermittent UUID ordering
-remain separate known limitations, not successful conformance results.
+CAP/VAP specifications.
+
+The subsequent UUID/JSON repair restores all four serialized event types without
+mutating input data or changing the hash/signature encoding. Unknown or missing
+serialized event fields, duplicate JSON keys and invalid value types are rejected.
+Both CLI verification and reporting return a nonzero exit status on failure.
+File-declared keys and roots still do not independently authenticate a producer.
+
+New UUIDv7 values use a lock-protected, randomly seeded counter to preserve
+generation order within one process, including equal milliseconds and clock
+rollback. This is not ordering across processes/restarts or a trusted timestamp;
+counter exhaustion raises instead of wrapping. The fixed-clock, concurrency,
+fork and serialized-CLI regressions and the full suite run without failure
+suppression. These repairs do not establish specification conformance.
 
 ## Repository guide
 

@@ -1,6 +1,6 @@
 # CAP-SRP API Reference
 
-Results concern supplied records only. No external-anchor verification or legal/CAP/VAP conformance assessment is performed. See the [canonical status and implementation limits](../README.md), including known proof/schema test failures and the JSON event-type deserialization failure.
+Results concern supplied records only. No external-anchor verification or legal/CAP/VAP conformance assessment is performed. See the [canonical status and implementation limits](../README.md) and the [verification/serialization repair history](VERIFICATION-HARDENING-20261101.md).
 
 Complete API documentation for the CAP-SRP library.
 
@@ -150,6 +150,13 @@ Export/import events to/from JSON file.
 logger.export_events("events.json")
 logger.import_events("events.json")
 ```
+
+Imports restore the complete fields emitted by `CAPEvent.to_dict()` for all four
+event types. They reject missing/unknown event fields, duplicate JSON keys,
+invalid types and inconsistent event counts instead of filling in IDs/timestamps
+or discarding extra fields. A failed parse leaves the existing logger state
+unchanged. Import is not authentication and does not replace the logger's signer;
+verify the imported records with separately trusted key/root material before use.
 
 ---
 

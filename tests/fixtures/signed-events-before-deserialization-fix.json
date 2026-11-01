@@ -1,0 +1,91 @@
+{
+  "version": "1.0.0",
+  "exported_at": "2026-11-01T00:00:00+00:00",
+  "public_key": "A6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg=",
+  "merkle_root": "b3abdcba1a2d04ec9d3b5015029e830c66ddc3d5cc4a6a08c22583054e9971fc",
+  "event_count": 6,
+  "events": [
+    {
+      "event_id": "01890f3e-0000-7000-8000-000000000001",
+      "event_type": "GEN_ATTEMPT",
+      "timestamp": "2026-11-01T00:00:00+00:00",
+      "session_id": "compatibility-synthetic",
+      "model_id": "synthetic-model",
+      "policy_version": "v1.0.0",
+      "previous_hash": "",
+      "current_hash": "sha256:21e836294109e5e931043b709cb60e1a88d8bf81047951a55971e691a50bbd2a",
+      "signature": "ed25519:81vCK7PhArhrHwiLWBevIQq16bCarpnQI9lBHYj4v9ftgQAz+jKRB3i17uexpeRlkgSyE6/wXcIcUEyFmP/2BA==",
+      "prompt_hash": "sha256:300963a1cba0960e3b32b324b0208428581ddb13a35e5929711a0e7d9182d999",
+      "user_context_hash": ""
+    },
+    {
+      "event_id": "01890f3e-0000-7000-8000-000000000002",
+      "event_type": "GEN",
+      "timestamp": "2026-11-01T00:00:00+00:00",
+      "session_id": "compatibility-synthetic",
+      "model_id": "synthetic-model",
+      "policy_version": "v1.0.0",
+      "previous_hash": "sha256:21e836294109e5e931043b709cb60e1a88d8bf81047951a55971e691a50bbd2a",
+      "current_hash": "sha256:bdc7030a872a70a6b09ed21a2864209dee19b8804f0633344bc9619e70b01a78",
+      "signature": "ed25519:GMuNJfY8avAbYub+sE+suqNZ6Ccf8NXY+ABKOLyZtpHWRgUssHHXp55jeOcAU19e8gEAnECVTvyC8D/l2DU6Cw==",
+      "attempt_id": "01890f3e-0000-7000-8000-000000000001",
+      "output_hash": "sha256:9c6cac367012133170f12505f176cbc7e943de56df3b6ca69371e0fce21cab86",
+      "c2pa_manifest_id": null
+    },
+    {
+      "event_id": "01890f3e-0000-7000-8000-000000000003",
+      "event_type": "GEN_ATTEMPT",
+      "timestamp": "2026-11-01T00:00:00+00:00",
+      "session_id": "compatibility-synthetic",
+      "model_id": "synthetic-model",
+      "policy_version": "v1.0.0",
+      "previous_hash": "sha256:bdc7030a872a70a6b09ed21a2864209dee19b8804f0633344bc9619e70b01a78",
+      "current_hash": "sha256:d83cd401bd26ab6e7f6aa8488d92a355040bae5dd8953fb8446afbb550abb4e3",
+      "signature": "ed25519:NQqUGpMeul5mmeoCxnfCeaadYnz1pMQqkMeG9W8E2lBLKyr6pCi8fJtQmJ0q19Yrf0Jhh7ajxb6N2vrCSN6/DQ==",
+      "prompt_hash": "sha256:4449bbebbd3c96f8a475ee14a87f985920e0df5f2bc029d354a871e1b17f340b",
+      "user_context_hash": ""
+    },
+    {
+      "event_id": "01890f3e-0000-7000-8000-000000000004",
+      "event_type": "GEN_DENY",
+      "timestamp": "2026-11-01T00:00:00+00:00",
+      "session_id": "compatibility-synthetic",
+      "model_id": "synthetic-model",
+      "policy_version": "v1.0.0",
+      "previous_hash": "sha256:d83cd401bd26ab6e7f6aa8488d92a355040bae5dd8953fb8446afbb550abb4e3",
+      "current_hash": "sha256:4f80eb1decbcd36b63bbb4329f7e991b58c9b36c20aa51d88a1c1c45ebe524cf",
+      "signature": "ed25519:JV7W4O3CStuXJNyKAZPedzOs4kCsDncfGW9cKyAnyJpZJF3R1z2AcTlNrs49h39HpwiUJSIlpd+ctK0eQiKHCQ==",
+      "attempt_id": "01890f3e-0000-7000-8000-000000000003",
+      "risk_category": "OTHER",
+      "risk_score": 0.5,
+      "denial_reason": "synthetic denial"
+    },
+    {
+      "event_id": "01890f3e-0000-7000-8000-000000000005",
+      "event_type": "GEN_ATTEMPT",
+      "timestamp": "2026-11-01T00:00:00+00:00",
+      "session_id": "compatibility-synthetic",
+      "model_id": "synthetic-model",
+      "policy_version": "v1.0.0",
+      "previous_hash": "sha256:4f80eb1decbcd36b63bbb4329f7e991b58c9b36c20aa51d88a1c1c45ebe524cf",
+      "current_hash": "sha256:a4de6f7a8a312cd9bf030e8908d5351533892270a3cbe5f6f69510944852d7ba",
+      "signature": "ed25519:tRzoGvyCuN7D+a2f2pm6wwHU4Vk3xpv/2LCsd1T30LAFf06hvMmfn2qpkCsi+dZVQvEVxnzbuidKe1rGTT9oCg==",
+      "prompt_hash": "sha256:5000baf0548bc732704163591f0a07c5a27d846910510874f6f8ecce69205911",
+      "user_context_hash": ""
+    },
+    {
+      "event_id": "01890f3e-0000-7000-8000-000000000006",
+      "event_type": "GEN_ERROR",
+      "timestamp": "2026-11-01T00:00:00+00:00",
+      "session_id": "compatibility-synthetic",
+      "model_id": "synthetic-model",
+      "policy_version": "v1.0.0",
+      "previous_hash": "sha256:a4de6f7a8a312cd9bf030e8908d5351533892270a3cbe5f6f69510944852d7ba",
+      "current_hash": "sha256:26426b9365a40c841862530665617824670505b3f6555c17c7cf66a201610f29",
+      "signature": "ed25519:3mvUgahyK5lidNM+VjnQly81QteWXOOuX1PrupjF4Fw8lEsmhh/Ow5ZdYJ96m/hbK/coAepWFXvvoseglxkbBw==",
+      "attempt_id": "01890f3e-0000-7000-8000-000000000005",
+      "error_code": "SYNTHETIC",
+      "error_message": "synthetic error"
+    }
+  ]
+}

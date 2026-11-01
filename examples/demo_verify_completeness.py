@@ -30,25 +30,14 @@ from datetime import datetime, timezone
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from cap_srp.core.events import create_event_from_dict
-from cap_srp.core.verifier import (
-    CompletenessVerifier,
-    ChainVerifier,
-    MerkleVerifier,
-    full_verification
-)
+from cap_srp.core.serialization import load_event_log
+from cap_srp.core.verifier import full_verification
 from cap_srp.core.merkle import MerkleTree
 
 
 def load_events(filepath: str):
     """Load events from a JSON file."""
-    with open(filepath, 'r') as f:
-        data = json.load(f)
-    
-    events = []
-    for event_data in data.get('events', []):
-        event = create_event_from_dict(event_data)
-        events.append(event)
+    data, events = load_event_log(filepath)
     
     metadata = {
         'version': data.get('version'),
@@ -93,7 +82,11 @@ def verify_events(filepath: str, verbose: bool = False, report_path: str = None)
     print(f"  File: {filepath}")
     print(f"  Events loaded: {len(events)}")
     print(f"  Export timestamp: {metadata.get('exported_at', 'N/A')}")
-    print(f"  Public key: {metadata.get('public_key', 'N/A')[:32]}...")
+    print(f"  Public key: {(metadata.get('public_key') or 'N/A')[:32]}...")
+    verification = full_verification(
+        events, public_key=metadata.get('public_key'),
+        expected_merkle_root=metadata.get('merkle_root')
+    )
     
     # Step 1: Completeness Verification
     print_section("Step 1: Completeness Invariant")
@@ -101,8 +94,7 @@ def verify_events(filepath: str, verbose: bool = False, report_path: str = None)
     print("  Formula: Σ ATTEMPTS = Σ GEN + Σ DENY + Σ ERROR")
     print()
     
-    completeness_verifier = CompletenessVerifier()
-    completeness_result = completeness_verifier.verify(events)
+    completeness_result = verification.completeness
     
     print(f"  Attempts:    {completeness_result.total_attempts:>10,}")
     print(f"  Generations: {completeness_result.total_generations:>10,}")
@@ -136,9 +128,8 @@ def verify_events(filepath: str, verbose: bool = False, report_path: str = None)
     # Step 2: Chain Verification
     print_section("Step 2: Hash Chain Integrity")
     
-    public_key = metadata.get('public_key')
-    chain_verifier = ChainVerifier(public_key)
-    chain_result = chain_verifier.verify(events, verify_signatures=bool(public_key))
+    chain_result = verification.chain
+    print(f"  Signature status: {chain_result.signature_status}")
     
     if chain_result.is_valid:
         print(f"  ✅ CHAIN INTACT ({chain_result.events_verified} events verified)")
@@ -156,7 +147,8 @@ def verify_events(filepath: str, verbose: bool = False, report_path: str = None)
     print_section("Step 3: Merkle Root Verification")
     
     expected_root = metadata.get('merkle_root')
-    if expected_root:
+    computed_root = None
+    if expected_root is not None:
         # Rebuild Merkle tree from events
         tree = MerkleTree()
         for event in events:
@@ -165,13 +157,13 @@ def verify_events(filepath: str, verbose: bool = False, report_path: str = None)
         computed_root = tree.root
         
         print(f"  Expected:  {expected_root[:32]}...")
-        print(f"  Computed:  {computed_root[:32]}...")
+        print(f"  Computed:  {(computed_root or 'N/A')[:32]}...")
         
         if computed_root == expected_root:
             print("  ✅ MERKLE ROOT MATCHES")
         else:
             print("  ❌ MERKLE ROOT MISMATCH!")
-            print("     This indicates the event log has been modified.")
+            print("     Supplied events and declared root do not agree.")
     else:
         print("  ⚠️  No expected Merkle root in metadata")
         print("     Skipping Merkle verification")
@@ -199,41 +191,16 @@ def verify_events(filepath: str, verbose: bool = False, report_path: str = None)
     # Overall Verdict
     print_section("VERIFICATION VERDICT")
     
-    all_valid = (
-        completeness_result.is_valid and
-        chain_result.is_valid and
-        (computed_root == expected_root if expected_root else True)
-    )
-    
-    if all_valid:
-        print()
-        print("  ╔════════════════════════════════════════════════════╗")
-        print("  ║                                                    ║")
-        print("  ║   ✅ EVENT LOG VERIFIED                           ║")
-        print("  ║                                                    ║")
-        print("  ║   • Completeness Invariant: PASSED                 ║")
-        print("  ║   • Hash Chain Integrity:   PASSED                 ║")
-        print("  ║   • Merkle Root:            MATCHED                ║")
-        print("  ║                                                    ║")
-        print("  ║   This log has not been tampered with.             ║")
-        print("  ║                                                    ║")
-        print("  ╚════════════════════════════════════════════════════╝")
-    else:
-        print()
-        print("  ╔════════════════════════════════════════════════════╗")
-        print("  ║                                                    ║")
-        print("  ║   ❌ VERIFICATION FAILED                          ║")
-        print("  ║                                                    ║")
-        if not completeness_result.is_valid:
-            print("  ║   • Completeness Invariant: FAILED                 ║")
-        if not chain_result.is_valid:
-            print("  ║   • Hash Chain Integrity:   FAILED                 ║")
-        if expected_root and computed_root != expected_root:
-            print("  ║   • Merkle Root:            MISMATCH               ║")
-        print("  ║                                                    ║")
-        print("  ║   Evidence of tampering detected!                  ║")
-        print("  ║                                                    ║")
-        print("  ╚════════════════════════════════════════════════════╝")
+    all_valid = verification.is_valid
+    print(f"  Local supplied-record checks: {'PASS' if all_valid else 'FAIL'}")
+    print(f"  Signatures: {chain_result.signature_status}")
+    root_status = "NOT_CHECKED" if verification.merkle_root_valid is None else (
+        "PASS" if verification.merkle_root_valid else "FAIL")
+    print(f"  Merkle root: {root_status}")
+    print("  Key and root are file-declared; producer identity is not authenticated.")
+    print("  No external-anchor or source-completeness verification is performed.")
+    if verification.error_message:
+        print(f"  Detail: {verification.error_message}")
     
     # Export report if requested
     if report_path:
@@ -244,12 +211,19 @@ def verify_events(filepath: str, verbose: bool = False, report_path: str = None)
             "verification_timestamp": datetime.now(timezone.utc).isoformat(),
             "input_file": filepath,
             "overall_valid": all_valid,
+            "trust_context": {
+                "scope": "LOCAL_SUPPLIED_RECORDS",
+                "trust_material": "FILE_DECLARED",
+                "producer_identity": "NOT_CHECKED",
+                "external_anchor": "NOT_CHECKED",
+                "source_completeness": "NOT_CHECKED",
+            },
             "completeness": completeness_result.to_dict(),
             "chain_integrity": chain_result.to_dict(),
             "merkle_root": {
                 "expected": expected_root,
-                "computed": computed_root if expected_root else None,
-                "valid": computed_root == expected_root if expected_root else None
+                "computed": computed_root,
+                "valid": verification.merkle_root_valid
             },
             "statistics": {
                 "total_events": len(events),
@@ -296,11 +270,15 @@ def main():
         sys.exit(1)
     
     # Run verification
-    is_valid = verify_events(
-        args.input,
-        verbose=args.verbose,
-        report_path=args.report
-    )
+    try:
+        is_valid = verify_events(
+            args.input,
+            verbose=args.verbose,
+            report_path=args.report
+        )
+    except (OSError, UnicodeError, ValueError) as exc:
+        print(f"Invalid event log: {exc}")
+        sys.exit(1)
     
     # Exit with appropriate code
     sys.exit(0 if is_valid else 1)
