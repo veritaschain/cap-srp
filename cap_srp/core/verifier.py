@@ -31,6 +31,8 @@ Usage:
 """
 
 from dataclasses import dataclass, field
+import base64
+import binascii
 from typing import List, Optional, Dict, Set, Tuple
 from datetime import datetime
 
@@ -120,6 +122,7 @@ class ChainVerificationResult:
     error_message: Optional[str] = None
     invalid_hashes: List[Tuple[int, str, str]] = field(default_factory=list)
     invalid_signatures: List[int] = field(default_factory=list)
+    signature_status: str = "NOT_CHECKED"
     
     def to_dict(self) -> dict:
         return {
@@ -128,7 +131,8 @@ class ChainVerificationResult:
             "first_invalid_index": self.first_invalid_index,
             "error_message": self.error_message,
             "invalid_hash_count": len(self.invalid_hashes),
-            "invalid_signature_count": len(self.invalid_signatures)
+            "invalid_signature_count": len(self.invalid_signatures),
+            "signature_status": self.signature_status
         }
 
 
@@ -287,7 +291,7 @@ class ChainVerifier:
         
         Args:
             public_key: Base64-encoded public key for signature verification.
-                       If not provided, signature verification is skipped.
+                       Required when signature verification is requested; missing keys fail closed.
         """
         self._public_key = public_key
     
@@ -307,8 +311,24 @@ class ChainVerifier:
             ChainVerificationResult: Detailed verification result
         """
         if not events:
-            return ChainVerificationResult(is_valid=True, events_verified=0)
-        
+            return ChainVerificationResult(is_valid=False, events_verified=0,
+                error_message="No events to verify", signature_status="NOT_CHECKED")
+
+        def decode_b64(value, length):
+            if not isinstance(value, str) or len(value) > 128:
+                raise ValueError("Invalid base64")
+            decoded = base64.b64decode(value, validate=True)
+            if len(decoded) != length or base64.b64encode(decoded).decode('ascii') != value:
+                raise ValueError("Noncanonical base64 or incorrect byte length")
+            return decoded
+
+        public_key = None
+        if verify_signatures:
+            try:
+                public_key = decode_b64(self._public_key, 32)
+            except (ValueError, TypeError, binascii.Error):
+                pass
+
         invalid_hashes = []
         invalid_signatures = []
         previous_hash = ""
@@ -331,39 +351,51 @@ class ChainVerifier:
                     f"Got: {event.current_hash[:16]}..."
                 ))
             
-            # Verify signature if requested and public key available
-            if verify_signatures and self._public_key and event.signature:
-                sig_parts = event.signature.split(':')
-                if len(sig_parts) == 2 and sig_parts[0] == 'ed25519':
-                    result = Ed25519Signer.verify_with_public_key_b64(
-                        event.current_hash.encode('utf-8'),
-                        sig_parts[1],
-                        self._public_key
-                    )
+            # Requested verification never skips missing/unsupported signatures.
+            if verify_signatures and public_key is not None:
+                try:
+                    if not isinstance(event.signature, str):
+                        raise ValueError("Missing signature")
+                    algorithm, encoded = event.signature.split(':')
+                    if algorithm != 'ed25519':
+                        raise ValueError("Unsupported signature algorithm")
+                    signature = decode_b64(encoded, 64)
+                    result = Ed25519Signer.verify_with_public_key(
+                        event.current_hash.encode('utf-8'), signature, public_key)
                     if not result.is_valid:
                         invalid_signatures.append(i)
-            
+                except (ValueError, TypeError, AttributeError, binascii.Error):
+                    invalid_signatures.append(i)
+
             # Update previous hash for next iteration
             previous_hash = event.current_hash
         
-        is_valid = len(invalid_hashes) == 0 and len(invalid_signatures) == 0
-        
+        signature_status = ("NOT_CHECKED" if not verify_signatures else
+            "INDETERMINATE" if public_key is None else
+            "INVALID" if invalid_signatures else "VALID")
+        is_valid = (not invalid_hashes and not invalid_signatures and
+                    signature_status != "INDETERMINATE")
+
         error_message = None
         if not is_valid:
             issues = []
             if invalid_hashes:
                 issues.append(f"{len(invalid_hashes)} invalid hashes")
             if invalid_signatures:
-                issues.append(f"{len(invalid_signatures)} invalid signatures")
+                issues.append(f"{len(invalid_signatures)} missing, unsupported or invalid signatures")
+            if signature_status == "INDETERMINATE":
+                issues.append("Signature verification requires a valid, separately trusted public key")
             error_message = "; ".join(issues)
         
         return ChainVerificationResult(
             is_valid=is_valid,
             events_verified=len(events),
-            first_invalid_index=invalid_hashes[0][0] if invalid_hashes else None,
+            first_invalid_index=min([item[0] for item in invalid_hashes] + invalid_signatures,
+                                    default=None),
             error_message=error_message,
             invalid_hashes=invalid_hashes,
-            invalid_signatures=invalid_signatures
+            invalid_signatures=invalid_signatures,
+            signature_status=signature_status
         )
 
 
@@ -453,12 +485,12 @@ def full_verification(
     This combines:
     1. Completeness verification
     2. Hash chain verification
-    3. Signature verification (if public key provided)
+    3. Required signature verification (missing key is INDETERMINATE)
     4. Merkle root verification (if expected root provided)
     
     Args:
         events: List of events to verify
-        public_key: Optional base64 public key for signature verification
+        public_key: Base64 public key from a separately trusted source; absence fails closed
         expected_merkle_root: Optional expected Merkle root to verify against
         
     Returns:
@@ -470,7 +502,7 @@ def full_verification(
     
     # Chain verification
     chain_verifier = ChainVerifier(public_key)
-    chain_result = chain_verifier.verify(events, verify_signatures=bool(public_key))
+    chain_result = chain_verifier.verify(events, verify_signatures=True)
     
     # Merkle root verification (if expected root provided)
     merkle_root_valid = None

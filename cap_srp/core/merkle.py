@@ -36,6 +36,7 @@ Usage:
 """
 
 import hashlib
+import re
 from typing import List, Optional, Tuple
 from dataclasses import dataclass, field
 import json
@@ -285,32 +286,60 @@ class MerkleTree:
         proof: InclusionProof,
         expected_root: str
     ) -> bool:
+        """Verify the caller's event digest, not a leaf claimed by the proof.
+
+        ``leaf_hash`` is the event digest accepted by ``add_leaf`` (64 hex
+        characters, optionally prefixed with ``sha256:``), BEFORE the 0x00
+        leaf-domain hash. The signed/root commitment must be obtained through
+        a trusted channel. A self-consistent proof does not authenticate it.
         """
-        Verify an inclusion proof.
-        
-        Args:
-            leaf_hash: Hash of the leaf to verify (hex string)
-            proof: The inclusion proof
-            expected_root: Expected Merkle root (hex string)
-            
-        Returns:
-            bool: True if the proof is valid
-        """
-        # Start with the leaf hash from the proof
-        current_hash = bytes.fromhex(proof.leaf_hash)
-        
-        # Apply each proof step
-        for sibling_hash, direction in zip(proof.proof_hashes, proof.proof_directions):
-            sibling = bytes.fromhex(sibling_hash)
-            if direction == 0:
-                # Sibling is on the left
-                current_hash = sha256(MerkleTree.NODE_PREFIX + sibling + current_hash)
-            else:
-                # Sibling is on the right
-                current_hash = sha256(MerkleTree.NODE_PREFIX + current_hash + sibling)
-        
-        return current_hash.hex() == expected_root
-    
+        def decode_hash(value: str, event: bool = False) -> bytes:
+            if not isinstance(value, str):
+                raise ValueError("Hash must be text")
+            if event and value.startswith('sha256:'):
+                value = value[7:]
+            if re.fullmatch(r'[0-9a-fA-F]{64}', value) is None:
+                raise ValueError("Expected a 32-byte hex digest")
+            return bytes.fromhex(value)
+
+        try:
+            if (type(proof.tree_size) is not int or
+                    not 1 <= proof.tree_size <= (1 << 64) - 1 or
+                    type(proof.leaf_index) is not int or
+                    not 0 <= proof.leaf_index < proof.tree_size or
+                    type(proof.proof_hashes) is not list or
+                    type(proof.proof_directions) is not list or
+                    len(proof.proof_hashes) != len(proof.proof_directions) or
+                    len(proof.proof_hashes) > 64):
+                return False
+            root = decode_hash(expected_root)
+            if decode_hash(proof.root_hash) != root:
+                return False
+            current_hash = sha256(MerkleTree.LEAF_PREFIX + decode_hash(leaf_hash, event=True))
+            if decode_hash(proof.leaf_hash) != current_hash:
+                return False
+
+            # Derive the exact path from size/index. An odd terminal node is
+            # promoted without consuming a sibling. Never silently zip/truncate.
+            index, width, step = proof.leaf_index, proof.tree_size, 0
+            while width > 1:
+                direction = 0 if index % 2 else (1 if index + 1 < width else None)
+                if direction is not None:
+                    if step >= len(proof.proof_hashes):
+                        return False
+                    actual_direction = proof.proof_directions[step]
+                    if type(actual_direction) is not int or actual_direction != direction:
+                        return False
+                    sibling = decode_hash(proof.proof_hashes[step])
+                    current_hash = sha256(MerkleTree.NODE_PREFIX +
+                        (sibling + current_hash if direction == 0 else current_hash + sibling))
+                    step += 1
+                index //= 2
+                width = (width + 1) // 2
+            return step == len(proof.proof_hashes) and current_hash == root
+        except (AttributeError, TypeError, ValueError, OverflowError):
+            return False
+
     def get_leaf_hash(self, index: int) -> str:
         """Get the hash of a leaf at the given index."""
         if index < 0 or index >= len(self._leaves):

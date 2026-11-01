@@ -122,7 +122,7 @@ class TestInclusionProof:
         for i in range(16):
             proof = tree.get_inclusion_proof(i)
             is_valid = MerkleTree.verify_inclusion_proof(
-                proof.leaf_hash,
+                hash_data(f"leaf{i}"),
                 proof,
                 tree.root
             )
@@ -137,7 +137,7 @@ class TestInclusionProof:
         proof = tree.get_inclusion_proof(0)
         
         is_valid = MerkleTree.verify_inclusion_proof(
-            proof.leaf_hash,
+            hash_data("leaf0"),
             proof,
             "wrong_root_hash"
         )
@@ -208,7 +208,7 @@ class TestEdgeCases:
             for i in range(power):
                 proof = tree.get_inclusion_proof(i)
                 assert MerkleTree.verify_inclusion_proof(
-                    proof.leaf_hash,
+                    hash_data(f"leaf{i}"),
                     proof,
                     tree.root
                 )
@@ -226,7 +226,7 @@ class TestEdgeCases:
             for i in range(count):
                 proof = tree.get_inclusion_proof(i)
                 assert MerkleTree.verify_inclusion_proof(
-                    proof.leaf_hash,
+                    hash_data(f"leaf{i}"),
                     proof,
                     tree.root
                 )
@@ -243,7 +243,7 @@ class TestEdgeCases:
         for i in [0, 100, 500, 999]:
             proof = tree.get_inclusion_proof(i)
             assert MerkleTree.verify_inclusion_proof(
-                proof.leaf_hash,
+                hash_data(f"leaf{i}"),
                 proof,
                 tree.root
             )
