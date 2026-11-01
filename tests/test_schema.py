@@ -6,6 +6,7 @@ Two-tiered validation:
 2. Example validation: generated events pass schema validation
 """
 
+import base64
 import json
 import pytest
 from pathlib import Path
@@ -14,6 +15,7 @@ from pathlib import Path
 try:
     import jsonschema
     from jsonschema import Draft202012Validator, RefResolver
+    from referencing import Registry, Resource
     HAS_JSONSCHEMA = True
 except ImportError:
     HAS_JSONSCHEMA = False
@@ -296,3 +298,78 @@ class TestSchemaRejection:
         
         with pytest.raises(jsonschema.ValidationError):
             validator.validate(invalid_score)
+
+
+@pytest.fixture(params=["gen-attempt", "gen-success", "gen-deny", "gen-error"])
+def signed_schema_event(request):
+    """Use the unchanged serializer's real signed output for every event type."""
+    logger = CAPLogger()
+    attempt = logger.log_attempt(prompt_hash=hash_data("synthetic schema prompt"))
+    if request.param == "gen-attempt":
+        event = attempt
+    elif request.param == "gen-success":
+        event = logger.log_generation(attempt.event_id, hash_data("synthetic output"))
+    elif request.param == "gen-deny":
+        event = logger.log_denial(attempt.event_id, RiskCategory.NCII_RISK)
+    else:
+        event = logger.log_error(attempt.event_id, "E001")
+    return request.param, event.to_dict()
+
+
+@pytest.mark.skipif(not HAS_JSONSCHEMA, reason="jsonschema not installed")
+class TestSerializedWireContract:
+    def test_signed_events_validate_through_entry_point(self, signed_schema_event):
+        _, event = signed_schema_event
+        # Register local resources for both $ref and unevaluatedProperties;
+        # a schema check must not depend on retrieval from the public website.
+        resources = [json.loads(path.read_text()) for path in SCHEMA_DIR.glob("*.json")]
+        registry = Registry().with_resources(
+            (schema["$id"], Resource.from_contents(schema)) for schema in resources
+        )
+        validator = Draft202012Validator(load_schema("event"), registry=registry)
+        validator.validate(event)
+
+    @pytest.mark.parametrize("signature", [
+        "",
+        None,
+        "rsa:" + base64.b64encode(bytes(64)).decode(),
+        base64.b64encode(bytes(64)).decode(),
+        "ed25519:" + base64.b64encode(bytes(63)).decode(),
+        "ed25519:" + base64.b64encode(bytes(65)).decode(),
+        "ed25519:" + "A" * 85 + "B==",  # Nonzero Base64 padding bits.
+        "ed25519:" + base64.b64encode(bytes(64)).decode() + "\n",
+    ])
+    def test_malformed_or_unsupported_signature_fails(self, signed_schema_event, signature):
+        schema_name, event = signed_schema_event
+        event["signature"] = signature
+        validator = Draft202012Validator(load_schema(schema_name))
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate(event)
+
+    def test_legacy_chain_field_name_is_rejected(self, signed_schema_event):
+        schema_name, event = signed_schema_event
+        event["prev_hash"] = event.pop("previous_hash")
+        validator = Draft202012Validator(load_schema(schema_name))
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate(event)
+
+    @pytest.mark.parametrize("previous_hash", [None, "sha256:short", "\n"])
+    def test_invalid_previous_hash_fails(self, signed_schema_event, previous_hash):
+        schema_name, event = signed_schema_event
+        event["previous_hash"] = previous_hash
+        validator = Draft202012Validator(load_schema(schema_name))
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate(event)
+
+    def test_optional_context_hash_accepts_empty_or_digest_only(self):
+        logger = CAPLogger()
+        event = logger.log_attempt(prompt_hash=hash_data("synthetic prompt")).to_dict()
+        validator = Draft202012Validator(load_schema("gen-attempt"))
+        assert event["user_context_hash"] == ""
+        validator.validate(event)
+        event["user_context_hash"] = hash_data("synthetic context")
+        validator.validate(event)
+        for invalid in (None, "sha256:short", "\n"):
+            event["user_context_hash"] = invalid
+            with pytest.raises(jsonschema.ValidationError):
+                validator.validate(event)

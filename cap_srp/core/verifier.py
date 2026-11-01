@@ -24,8 +24,8 @@ Usage:
     >>> result = completeness_verifier.verify(events)
     >>> print(f"Complete: {result.is_valid}")
     >>> 
-    >>> # Verify chain integrity
-    >>> chain_verifier = ChainVerifier()
+    >>> # Verify chain integrity and signatures with a separately trusted key
+    >>> chain_verifier = ChainVerifier(trusted_public_key)
     >>> result = chain_verifier.verify(events)
     >>> print(f"Chain intact: {result.is_valid}")
 """
@@ -506,7 +506,7 @@ def full_verification(
     
     # Merkle root verification (if expected root provided)
     merkle_root_valid = None
-    if expected_merkle_root:
+    if expected_merkle_root is not None:
         tree = MerkleTree()
         for event in events:
             tree.add_leaf(event.current_hash)

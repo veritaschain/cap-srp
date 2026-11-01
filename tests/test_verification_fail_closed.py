@@ -149,3 +149,15 @@ def test_trailing_proof_step_is_rejected():
     proof.proof_hashes.append('0' * 64)
     proof.proof_directions.append(1)
     assert not tree.verify_inclusion_proof(target, proof, tree.root)
+
+
+def test_explicit_empty_expected_root_does_not_skip_merkle_verification():
+    from cap_srp.core.logger import CAPLogger
+    from cap_srp.core.verifier import full_verification
+    from cap_srp.core.events import hash_data
+    logger = CAPLogger()
+    attempt = logger.log_attempt(prompt_hash=hash_data('synthetic prompt'))
+    logger.log_generation(attempt.event_id, hash_data('synthetic output'))
+    result = full_verification(logger.events, logger.public_key, expected_merkle_root='')
+    assert not result.is_valid
+    assert result.merkle_root_valid is False

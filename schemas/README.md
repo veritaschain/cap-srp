@@ -2,6 +2,24 @@
 
 JSON Schema definitions for this PoC's local event format. These schemas are not the canonical CAP v1.0 schemas or a VAP v1.2 envelope. Validation does not establish CAP/VAP conformance; see the [current status and limits](../README.md#canonical-specifications-and-status).
 
+## Local wire contract
+
+The schemas match the existing `CAPEvent.to_dict()` output. The chain field is
+`previous_hash` (an empty string for the first event), not `prev_hash`. An omitted
+user-context digest is serialized as an empty `user_context_hash`. Nonempty
+digests must retain the `sha256:` prefix and 64 hexadecimal digits.
+
+When present, `signature` must be `ed25519:` followed by the canonical padded
+Base64 encoding of exactly 64 bytes. Bare Base64, unsupported algorithms,
+incorrect lengths and noncanonical padding are rejected. The serializer,
+event-hashing input, Merkle construction and existing signed records are unchanged.
+
+Schema validation checks representation only; it does not authenticate a
+signature or require an event fragment to contain one. Use `ChainVerifier` or
+`full_verification` with a separately trusted public key for mandatory signature
+verification. In particular, a schema-valid object is not a successful
+cryptographic verification result.
+
 ## Architecture
 
 ```
@@ -42,11 +60,15 @@ $id:     https://veritaschain.org/schemas/cap-srp/v0.1/{filename}
 import json
 import jsonschema
 from pathlib import Path
+from referencing import Registry, Resource
 
-# Load schema
-schema_path = Path(__file__).parent / "schemas" / "gen-deny.json"
-with open(schema_path) as f:
-    schema = json.load(f)
+# Load all references locally; validation does not fetch the public website.
+schema_dir = Path("schemas")
+schemas = [json.loads(path.read_text()) for path in schema_dir.glob("*.json")]
+registry = Registry().with_resources(
+    (schema["$id"], Resource.from_contents(schema)) for schema in schemas
+)
+schema = json.loads((schema_dir / "event.json").read_text())
 
 # Validate event
 event = {
@@ -58,7 +80,8 @@ event = {
     "risk_score": 0.95
 }
 
-jsonschema.validate(event, schema)  # Raises if invalid
+validator = jsonschema.Draft202012Validator(schema, registry=registry)
+validator.validate(event)  # Structure only; this unsigned fragment is not authenticated.
 ```
 
 ### JavaScript/Node.js (ajv)

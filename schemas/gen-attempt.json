@@ -30,10 +30,13 @@
       "format": "uuid",
       "description": "Chain identifier for grouping related events"
     },
-    "prev_hash": {
-      "type": ["string", "null"],
-      "pattern": "^sha256:[a-f0-9]{64}$",
-      "description": "Hash of previous event (null for genesis)"
+    "previous_hash": {
+      "type": "string",
+      "anyOf": [
+        { "const": "" },
+        { "pattern": "^sha256:[a-f0-9]{64}$", "minLength": 71, "maxLength": 71 }
+      ],
+      "description": "Hash of previous event; empty string for genesis, matching CAPEvent.to_dict()"
     },
     "current_hash": {
       "type": "string",
@@ -42,8 +45,10 @@
     },
     "signature": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9+/=]+$",
-      "description": "Base64-encoded Ed25519 signature"
+      "pattern": "^ed25519:[A-Za-z0-9+/]{85}[AQgw]==$",
+      "minLength": 96,
+      "maxLength": 96,
+      "description": "ed25519: followed by canonical padded Base64 encoding of the 64-byte signature; format validation only"
     },
     "prompt_hash": {
       "type": "string",
@@ -52,8 +57,11 @@
     },
     "user_context_hash": {
       "type": "string",
-      "pattern": "^sha256:[a-f0-9]{64}$",
-      "description": "SHA-256 hash of user context data"
+      "anyOf": [
+        { "const": "" },
+        { "pattern": "^sha256:[a-f0-9]{64}$", "minLength": 71, "maxLength": 71 }
+      ],
+      "description": "SHA-256 hash of user context data, or empty string when omitted by the caller"
     },
     "session_id": {
       "type": "string",
