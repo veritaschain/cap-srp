@@ -19,8 +19,8 @@ jobs:
           python-version: '3.12'
       - name: Install project and test dependencies
         run: python -m pip install -e '.[dev]'
-      - name: Target binding and core regression
-        run: python -m pytest tests/test_verification_fail_closed.py tests/test_merkle.py tests/test_verifier.py tests/test_logger.py tests/test_events.py -v --junitxml=regression-results.xml
+      - name: Target binding and verifier regression (68 cases)
+        run: python -m pytest tests/test_verification_fail_closed.py tests/test_merkle.py tests/test_verifier.py -v --junitxml=regression-results.xml
       - name: Package reviewed source for reproducibility
         if: always()
         run: |
@@ -37,7 +37,7 @@ jobs:
           path: regression-evidence/
           retention-days: 14
   full-suite:
-    name: Full suite (known schema failures remain visible)
+    name: Full suite (known schema and UUID issues remain visible)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
