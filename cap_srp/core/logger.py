@@ -62,9 +62,9 @@ from cap_srp.core.events import (
     GenerationDenial,
     GenerationError,
     generate_event_id,
-    hash_data,
-    create_event_from_dict
+    hash_data
 )
+from cap_srp.core.serialization import load_event_log
 from cap_srp.core.signer import Ed25519Signer, SignatureResult
 from cap_srp.core.merkle import MerkleTree, InclusionProof
 
@@ -458,25 +458,19 @@ class CAPLogger:
             filepath: Path to the input file
         """
         with self._lock:
-            with open(filepath, 'r') as f:
-                data = json.load(f)
-            
-            # Clear current state
-            self._events = []
-            self._merkle_tree = MerkleTree()
-            self._previous_hash = ""
-            self._attempt_outcomes = {}
-            
-            # Import events
-            for event_data in data.get('events', []):
-                event = create_event_from_dict(event_data)
-                self._events.append(event)
-                self._merkle_tree.add_leaf(event.current_hash)
-                self._previous_hash = event.current_hash
-                
-                # Track outcomes
+            _, events = load_event_log(filepath)
+            tree = MerkleTree()
+            outcomes = {}
+            for event in events:
+                tree.add_leaf(event.current_hash)
                 if hasattr(event, 'attempt_id') and event.attempt_id:
-                    self._attempt_outcomes[event.attempt_id] = event.event_id
+                    outcomes[event.attempt_id] = event.event_id
+            # Replace state only after the entire import parsed successfully.
+            # Loading is not signature verification; the logger keeps its key.
+            self._events = events
+            self._merkle_tree = tree
+            self._previous_hash = events[-1].current_hash if events else ""
+            self._attempt_outcomes = outcomes
 
 
 def create_demo_logger() -> CAPLogger:

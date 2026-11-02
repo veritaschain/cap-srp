@@ -34,4 +34,9 @@ The code has no end-to-end TSA submission/receipt verification path. Retention, 
 cap-srp report data/demo_events.json
 ```
 
-This existing command currently fails on the generated demo JSON because of event-type deserialization; see the [known implementation failures](../README.md#known-implementation-failures). Its report template does not make a regulatory determination and does not independently authenticate external anchors.
+The November 2026 JSON repair restores generated demo records for this command;
+see the [repair history and limits](../README.md#known-implementation-failures).
+The report returns a nonzero exit code when local verification fails, including
+when a key or signature is missing. It uses file-declared key/root material and
+does not independently authenticate producer identity or external anchors. Its
+report template does not make a regulatory determination.

@@ -21,9 +21,14 @@ the safety evaluation ensures that:
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, fields
 import hashlib
 import json
+import math
+import os
+import secrets
+import threading
+import time
 import uuid
 
 
@@ -83,30 +88,55 @@ class RiskCategory(Enum):
     OTHER = "OTHER"                                # Other policy violations
 
 
+_uuid_lock = threading.Lock()
+_uuid_timestamp_ms = -1
+_uuid_random = 0
+_UUID_RANDOM_MAX = (1 << 74) - 1
+_UUID_TIMESTAMP_MAX = (1 << 48) - 1
+
+
+def _reset_uuid_state_after_fork() -> None:
+    """A child must not inherit a locked mutex or its parent's counter."""
+    global _uuid_lock, _uuid_timestamp_ms, _uuid_random
+    _uuid_lock = threading.Lock()
+    _uuid_timestamp_ms = -1
+    _uuid_random = 0
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_uuid_state_after_fork)
+
+
 def generate_event_id() -> str:
+    """Generate a process-local monotonic UUIDv7 (RFC 9562 section 6.2).
+
+    The 74 random bits form a randomly seeded counter. Calls within the same
+    millisecond, or after a clock rollback, increment that counter under a
+    lock. Counter exhaustion raises instead of wrapping or inventing time.
+    Ordering is local to this process, not across restarts or machines. These
+    identifiers are not secrets or trusted timestamps.
     """
-    Generate a UUIDv7 event ID.
-    
-    UUIDv7 is used because:
-    1. Sortable by creation time (first 48 bits are timestamp)
-    2. K-ordered (naturally sorted in databases)
-    3. Unique across distributed systems
-    
-    Returns:
-        str: A UUIDv7 string in standard format
-    """
-    # UUIDv7: timestamp (48 bits) + version (4 bits) + random (12 bits) + 
-    #         variant (2 bits) + random (62 bits)
-    timestamp_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-    
-    # Build UUIDv7 manually
-    uuid_int = (timestamp_ms & 0xFFFFFFFFFFFF) << 80  # 48-bit timestamp
-    uuid_int |= 0x7 << 76  # Version 7
-    uuid_int |= (uuid.uuid4().int & 0x0FFF) << 64  # 12 random bits
-    uuid_int |= 0x2 << 62  # Variant
-    uuid_int |= uuid.uuid4().int & 0x3FFFFFFFFFFFFFFF  # 62 random bits
-    
-    return str(uuid.UUID(int=uuid_int))
+    global _uuid_timestamp_ms, _uuid_random
+    with _uuid_lock:
+        timestamp_ms = time.time_ns() // 1_000_000
+        if not 0 <= timestamp_ms <= _UUID_TIMESTAMP_MAX:
+            raise ValueError("Clock is outside the UUIDv7 timestamp range")
+        if timestamp_ms > _uuid_timestamp_ms:
+            random_bits = secrets.randbits(74)
+        else:
+            timestamp_ms = _uuid_timestamp_ms
+            if _uuid_random == _UUID_RANDOM_MAX:
+                raise OverflowError("UUIDv7 counter exhausted; wait for the clock to advance")
+            random_bits = _uuid_random + 1
+
+        _uuid_timestamp_ms = timestamp_ms
+        _uuid_random = random_bits
+        uuid_int = timestamp_ms << 80
+        uuid_int |= 0x7 << 76  # Version 7
+        uuid_int |= (random_bits >> 62) << 64
+        uuid_int |= 0x2 << 62  # RFC variant
+        uuid_int |= random_bits & ((1 << 62) - 1)
+        return str(uuid.UUID(int=uuid_int))
 
 
 def hash_data(data: str) -> str:
@@ -316,40 +346,42 @@ class GenerationError(CAPEvent):
 
 
 def create_event_from_dict(data: dict) -> CAPEvent:
+    """Restore the exact fields emitted by ``CAPEvent.to_dict()``.
+
+    This is a serialized-record parser, not a convenience event constructor.
+    Missing or unknown fields and invalid JSON value types raise ``ValueError``;
+    no IDs, timestamps or signed fields are silently generated or discarded.
+    Hash and signature authentication remain the verifier's responsibility.
     """
-    Factory function to create the appropriate event type from a dictionary.
-    
-    Args:
-        data: Dictionary containing event data
-        
-    Returns:
-        CAPEvent: The appropriate event subclass instance
-        
-    Raises:
-        ValueError: If event_type is missing or invalid
-    """
-    event_type_str = data.get('event_type')
-    if not event_type_str:
-        raise ValueError("event_type is required")
-    
-    event_type = EventType(event_type_str)
-    
-    # Convert risk_category string back to enum if present
-    if 'risk_category' in data and data['risk_category']:
-        data['risk_category'] = RiskCategory(data['risk_category'])
-    
-    # Map to appropriate class
-    if event_type == EventType.GEN_ATTEMPT:
-        return GenerationAttempt(**{k: v for k, v in data.items() 
-                                    if k in GenerationAttempt.__dataclass_fields__})
-    elif event_type == EventType.GEN:
-        return GenerationSuccess(**{k: v for k, v in data.items() 
-                                    if k in GenerationSuccess.__dataclass_fields__})
-    elif event_type == EventType.GEN_DENY:
-        return GenerationDenial(**{k: v for k, v in data.items() 
-                                   if k in GenerationDenial.__dataclass_fields__})
-    elif event_type == EventType.GEN_ERROR:
-        return GenerationError(**{k: v for k, v in data.items() 
-                                  if k in GenerationError.__dataclass_fields__})
-    else:
-        raise ValueError(f"Unknown event type: {event_type_str}")
+    if not isinstance(data, dict):
+        raise ValueError("Event must be a JSON object")
+    if not isinstance(data.get("event_type"), str):
+        raise ValueError("event_type must be a string")
+    event_type = EventType(data["event_type"])
+    event_class = {
+        EventType.GEN_ATTEMPT: GenerationAttempt,
+        EventType.GEN: GenerationSuccess,
+        EventType.GEN_DENY: GenerationDenial,
+        EventType.GEN_ERROR: GenerationError,
+    }[event_type]
+    field_names = {item.name for item in fields(event_class)}
+    if set(data) != field_names:
+        raise ValueError("Event fields do not match the serialized event type")
+
+    # Work on a copy: callers may retain the original JSON for hashing/audit.
+    restored = data.copy()
+    for name, value in data.items():
+        if name == "risk_score":
+            if type(value) not in (int, float) or not 0 <= value <= 1 or not math.isfinite(value):
+                raise ValueError("risk_score must be a finite number between zero and one")
+        elif name in ("risk_category", "c2pa_manifest_id") and value is None:
+            continue
+        elif not isinstance(value, str):
+            raise ValueError(f"{name} must be a string")
+    for name in ("event_id", "timestamp"):
+        if not restored[name]:
+            raise ValueError(f"{name} must not be empty")
+    restored["event_type"] = event_type
+    if "risk_category" in restored and restored["risk_category"] is not None:
+        restored["risk_category"] = RiskCategory(restored["risk_category"])
+    return event_class(**restored)

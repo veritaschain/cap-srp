@@ -1,6 +1,6 @@
 # CAP-SRP API Reference
 
-Results concern supplied records only. No external-anchor verification or legal/CAP/VAP conformance assessment is performed. See the [canonical status and implementation limits](../README.md), including known proof/schema test failures and the JSON event-type deserialization failure.
+Results concern supplied records only. No external-anchor verification or legal/CAP/VAP conformance assessment is performed. See the [canonical status and implementation limits](../README.md) and the [verification/serialization repair history](VERIFICATION-HARDENING-20261101.md).
 
 Complete API documentation for the CAP-SRP library.
 
@@ -150,6 +150,13 @@ Export/import events to/from JSON file.
 logger.export_events("events.json")
 logger.import_events("events.json")
 ```
+
+Imports restore the complete fields emitted by `CAPEvent.to_dict()` for all four
+event types. They reject missing/unknown event fields, duplicate JSON keys,
+invalid types and inconsistent event counts instead of filling in IDs/timestamps
+or discarding extra fields. A failed parse leaves the existing logger state
+unchanged. Import is not authentication and does not replace the logger's signer;
+verify the imported records with separately trusted key/root material before use.
 
 ---
 
@@ -344,6 +351,14 @@ tree.to_json() -> str
 tree = MerkleTree.from_leaves(leaf_hashes: List[str])
 ```
 
+For `verify_inclusion_proof`, `leaf_hash` is the original **event digest** supplied
+to `add_leaf`: 64 hexadecimal characters, optionally prefixed with `sha256:`.
+The verifier computes `SHA256(0x00 || event_digest_bytes)` itself. Do not pass
+`proof.leaf_hash`, which is the already domain-hashed leaf claimed by the proof.
+Malformed hashes, inconsistent size/index or directions, and incomplete or extra
+path steps return `False`. Authenticate the expected root and tree scope outside
+this API; a proof and root from the same export are not independent evidence.
+
 #### InclusionProof
 
 ```python
@@ -420,7 +435,15 @@ class ChainVerificationResult:
     error_message: Optional[str]
     invalid_hashes: List[Tuple[int, str, str]]
     invalid_signatures: List[int]
+    signature_status: str  # VALID, INVALID, INDETERMINATE or NOT_CHECKED
 ```
+
+Signature verification is required by default. Missing, malformed or unsupported
+signatures are `INVALID` when a valid public key is available. An absent or
+malformed public key is `INDETERMINATE`; neither result sets `is_valid=True`.
+Empty event lists also fail. Obtain the public key through a separately trusted
+channel. Explicit `verify_signatures=False` performs only hash-chain inspection
+and reports `NOT_CHECKED`; its `is_valid` does not authenticate the records.
 
 #### Full Verification
 
@@ -433,6 +456,13 @@ result = full_verification(
     expected_merkle_root: Optional[str] = None
 ) -> FullVerificationResult
 ```
+
+`full_verification` always requests signature verification, including when
+`public_key` is omitted. Only `expected_merkle_root=None` omits the optional root
+check; an explicitly supplied empty or mismatching root fails it. A successful
+result still does not establish an independently anchored history, source
+completeness, legal compliance or certification. See the
+[verification hardening notes](VERIFICATION-HARDENING-20261101.md).
 
 ---
 

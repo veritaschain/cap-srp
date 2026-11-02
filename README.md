@@ -16,7 +16,7 @@ CAP-SRP provides a Python logging library, CLI and Streamlit dashboard for explo
 - [CAP v1.0 / VAP v1.2 Draft 3 conformance mapping](https://github.com/veritaschain/cap-spec/blob/main/docs/conformance/CAP-v1.0-VAP-v1.2-Draft3-Conformance-Mapping.md) — **review draft**
 - [Minimal change proposal](https://github.com/veritaschain/cap-spec/blob/main/docs/conformance/CAP-VAP-v1.2-Minimal-Change-Proposal.md) — **unadopted**
 
-**Status checked 2026-10-08 JST:** the mapping is published for review, but identifies unresolved normative divergences. **CAP v1.0 conformance to VAP v1.2 has not been established.** Neither publication of the mapping nor this PoC establishes conformance or certification. CAP v1.0 remains the released CAP specification; the proposal does not amend it. This repository demonstrates selected SRP mechanisms and does not claim full CAP v1.0 or VAP v1.2 conformance.
+**Canonical document status rechecked 2026-11-02 UTC:** the mapping is published for review, but identifies unresolved normative divergences. **CAP v1.0 conformance to VAP v1.2 has not been established.** Neither publication of the mapping nor this PoC establishes conformance or certification. CAP v1.0 remains the released CAP specification; the proposal does not amend it. This repository demonstrates selected SRP mechanisms and does not claim full CAP v1.0 or VAP v1.2 conformance. This date records a check of the linked documents' stated status, not a new conformance assessment or implementation count.
 
 In particular, CAP v1.0 permits optional external anchoring at Bronze, whereas VAP v1.2 INT-006 requires it at every conformance level. Signed batch scope, continuity, policy binding and data-model requirements also remain unresolved. A local hash chain, Merkle root or passing PoC test is not a substitute for those requirements.
 
@@ -26,9 +26,9 @@ This is a **first-party PoC**, not independent implementation evidence. The [can
 
 | Mechanism | Demonstrated scope | Limitation |
 | --- | --- | --- |
-| Ed25519 signatures and hash chain | Integrity checks on the supplied event records; signatures can be checked when a public key is supplied | The public key must be independently authenticated; signatures do not prove the truth of a decision |
+| Ed25519 signatures and hash chain | Signature verification is required by default; missing keys or missing/unsupported signatures cannot produce authenticated success | The public key must be independently authenticated; explicit hash-only inspection reports NOT_CHECKED and signatures do not prove the truth of a decision |
 | Attempt/outcome verification | Counts and attempt-ID matching for `GEN`, `GEN_DENY` and `GEN_ERROR` | Checks only supplied records; not a complete VAP batch verifier |
-| Merkle tree and inclusion proofs | Experimental membership/root-checking APIs | Existing proof-verification tests fail; not independently validated. A root supplied with the same export is not an independent anchor. The leaf input is the event hash, H(0x00 ‖ EventHash), not H(0x00 ‖ canonical(E)) as in VAP v1.2 §4.1.3 Mechanism B |
+| Merkle tree and inclusion proofs | Membership checks bind the caller's event digest to the proof and validate the complete path | Local regression tests are not independent validation. A root supplied with the same export is not an independent anchor. The leaf construction is H(0x00 ‖ EventHash), not H(0x00 ‖ canonical(E)) as in VAP v1.2 §4.1.3 Mechanism B |
 | Dashboard and reports | Record statistics and local verification results | A PASS is not legal compliance, certification or proof of model safety |
 
 **External anchoring is not implemented end to end in this PoC.** The code contains an `AnchoredMerkleRoot` data container and an optional TSA dependency, but the Quick Start does not obtain or authenticate RFC 3161 receipts, signed VAP AnchorRecords or anchor continuity. Architectural anchoring diagrams describe an integration target, not an executed verification path.
@@ -80,7 +80,7 @@ streamlit run cap_srp/dashboard/app.py
 python examples/demo_generate_events.py --events 1000 --output data/demo_events.json
 ```
 
-The generated records are synthetic. The local schemas describe this PoC's wire format; they are not canonical CAP/VAP conformance tests. See the known failures below before using schema validation as a gate.
+The generated records are synthetic. The local schemas describe this PoC's wire format; they are not canonical CAP/VAP conformance tests. Schema validation checks representation, not authenticity; see the [local wire contract](schemas/README.md#local-wire-contract).
 
 ### 4. Check records in memory
 
@@ -139,11 +139,32 @@ pip install -e ".[dev]"
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Test success verifies tested PoC behavior, not specification conformance.
 
-### Known implementation failures
+<a id="known-implementation-failures"></a>
 
-During the 2026-10-08 JST documentation check, the existing suite had **91 passes and 6 failures**: one Merkle proof-verification test and five schema/example-validation tests. The same six failures reproduce on the unchanged base commit `3359ea7963ea3ff8c945b9488877b5aacf89bc2c`; its UUID sorting test also failed (90 passes / 7 failures). The schema failures include a mismatch between the emitted `ed25519:` signature prefix and the schema pattern. JSON event-type deserialization also prevents the demo-file verification/report commands above from completing.
+### Implementation repair history and limits
 
-These are existing implementation limitations, not successful conformance results. This update changes documentation and displayed/generated explanations; it does not repair cryptographic algorithms, event deserialization or schemas. The in-memory README example and event-generation demo were exercised successfully.
+During the 2026-10-08 JST documentation check, the existing suite had **91 passes and 6 failures**: one Merkle proof-verification test and five schema/example-validation tests. The same six failures reproduce on the unchanged base commit `3359ea7963ea3ff8c945b9488877b5aacf89bc2c`; its UUID sorting test also failed (90 passes / 7 failures). The schema failures included a mismatch between the emitted `ed25519:` signature prefix and the schema pattern. JSON event-type deserialization also prevented demo-file verification/report commands from completing at that point.
+
+The November 2026 verification repair addresses the Merkle target-binding and
+signature fail-open defects; see the [changed API contract and test evidence](docs/VERIFICATION-HARDENING-20261101.md).
+The local JSON Schemas are also aligned with the existing serializer's
+`ed25519:` signature, `previous_hash` field and empty optional context digest.
+Unsupported signature formats remain rejected and `additionalProperties: false`
+is retained. These changes do not rewrite event hashes, signatures or normative
+CAP/VAP specifications.
+
+The subsequent UUID/JSON repair restores all four serialized event types without
+mutating input data or changing the hash/signature encoding. Unknown or missing
+serialized event fields, duplicate JSON keys and invalid value types are rejected.
+Both CLI verification and reporting return a nonzero exit status on failure.
+File-declared keys and roots still do not independently authenticate a producer.
+
+New UUIDv7 values use a lock-protected, randomly seeded counter to preserve
+generation order within one process, including equal milliseconds and clock
+rollback. This is not ordering across processes/restarts or a trusted timestamp;
+counter exhaustion raises instead of wrapping. The fixed-clock, concurrency,
+fork and serialized-CLI regressions and the full suite run without failure
+suppression. These repairs do not establish specification conformance.
 
 ## Repository guide
 
