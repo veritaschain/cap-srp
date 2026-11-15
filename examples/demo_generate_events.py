@@ -253,7 +253,7 @@ def main():
     print("Next steps:")
     print(f"  1. View events: cat {output_path} | jq '.events | length'")
     print(f"  2. Verify: python examples/demo_verify_completeness.py -i {output_path}")
-    print(f"  3. Dashboard: python -m cap_srp.dashboard.app")
+    print("  3. Dashboard: cap-srp dashboard")
 
 
 if __name__ == "__main__":

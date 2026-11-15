@@ -20,7 +20,7 @@ CAP-SRP provides a Python logging library, CLI and Streamlit dashboard for explo
 
 In particular, CAP v1.0 permits optional external anchoring at Bronze, whereas VAP v1.2 INT-006 requires it at every conformance level. Signed batch scope, continuity, policy binding and data-model requirements also remain unresolved. A local hash chain, Merkle root or passing PoC test is not a substitute for those requirements.
 
-This is a **first-party PoC**, not independent implementation evidence. The [canonical CAP implementation disclosure](https://github.com/veritaschain/cap-spec#implementation-status-mandatory-disclosure) reports zero external implementations and zero Evidence Packs accepted in proceedings as of September 2026.
+This is a **first-party PoC**, not independent implementation evidence. The [canonical CAP implementation disclosure](https://github.com/veritaschain/cap-spec#implementation-status-mandatory-disclosure), dated 25 October 2026, reports zero external implementations and zero Evidence Packs accepted in proceedings.
 
 ## What this PoC demonstrates
 
@@ -70,9 +70,13 @@ pip install -e ".[dev]"
 ### 2. Run the dashboard
 
 ```bash
-streamlit run cap_srp/dashboard/app.py
+cap-srp dashboard
 # Open http://localhost:8501
 ```
+
+The launcher resolves the installed dashboard file, so it also works outside the
+repository directory. A failed Streamlit process produces a nonzero CLI exit.
+From the repository root, `streamlit run cap_srp/dashboard/app.py` remains available.
 
 ### 3. Generate demo records
 
@@ -82,11 +86,27 @@ python examples/demo_generate_events.py --events 1000 --output data/demo_events.
 
 The generated records are synthetic. The local schemas describe this PoC's wire format; they are not canonical CAP/VAP conformance tests. Schema validation checks representation, not authenticity; see the [local wire contract](schemas/README.md#local-wire-contract).
 
-### 4. Check records in memory
+### 4. Verify the exported records and save a report
 
-Use the Python example under **Event model** below for a working local attempt/outcome check.
+```bash
+cap-srp verify data/demo_events.json --json-output
+cap-srp report data/demo_events.json --output data/verification-report.txt
+python examples/demo_verify_completeness.py -i data/demo_events.json --report data/verification-report.json
+```
 
-The JSON-file commands `cap-srp verify`, `cap-srp report` and `examples/demo_verify_completeness.py` currently encounter an event-type deserialization error on the generated demo export. They are not a working end-to-end verification path. Authenticate keys and reference commitments independently before relying on producer evidence; no command here authenticates an external anchor.
+These serialized-file paths were restored by the November repair described below.
+They return `0` for a passing local supplied-record check and a nonzero status for
+failed verification or an input/output error. With `--verbose --json-output`, stdout
+remains one JSON document and the progress message goes to stderr.
+
+Report destinations must be distinct from the input event log, including relative
+paths, symbolic links and existing hard links to that file. Both report commands
+reject such aliases before writing; a distinct existing report can still be replaced.
+
+The file-declared key and root are not independent trust material. Authenticate
+keys and reference commitments separately; these commands do not authenticate an
+external anchor. The Python example under **Event model** demonstrates the narrower
+in-memory attempt/outcome check.
 
 ## Event model
 
