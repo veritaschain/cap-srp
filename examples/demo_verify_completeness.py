@@ -33,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from cap_srp.core.serialization import load_event_log
 from cap_srp.core.verifier import full_verification
 from cap_srp.core.merkle import MerkleTree
+from cap_srp.utils.report_io import write_report
 
 
 def load_events(filepath: str):
@@ -231,8 +232,7 @@ def verify_events(filepath: str, verbose: bool = False, report_path: str = None)
             }
         }
         
-        with open(report_path, 'w') as f:
-            json.dump(report, f, indent=2)
+        write_report(filepath, report_path, json.dumps(report, indent=2))
         
         print(f"  Report exported to: {report_path}")
     
@@ -277,7 +277,7 @@ def main():
             report_path=args.report
         )
     except (OSError, UnicodeError, ValueError) as exc:
-        print(f"Invalid event log: {exc}")
+        print(f"Verification/report error: {exc}")
         sys.exit(1)
     
     # Exit with appropriate code

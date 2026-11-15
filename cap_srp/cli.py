@@ -22,6 +22,7 @@ from cap_srp.core.logger import CAPLogger, create_demo_logger
 from cap_srp.core.events import RiskCategory, hash_data
 from cap_srp.core.serialization import load_event_log
 from cap_srp.core.verifier import CompletenessVerifier, ChainVerifier, full_verification
+from cap_srp.utils.report_io import write_report
 
 
 @click.group()
@@ -123,7 +124,7 @@ def verify(input_file, verbose, json_output):
     expected_root = data.get('merkle_root')
     
     if verbose:
-        click.echo(f"Verifying {len(events)} events...")
+        click.echo(f"Verifying {len(events)} events...", err=json_output)
     
     result = full_verification(
         events,
@@ -175,11 +176,16 @@ def dashboard(port):
     click.echo(f"Starting CAP-SRP Dashboard on port {port}...")
     click.echo("Press Ctrl+C to stop")
     
-    subprocess.run([
-        sys.executable, "-m", "streamlit", "run",
-        "cap_srp/dashboard/app.py",
-        "--server.port", str(port)
-    ])
+    app_path = Path(__file__).resolve().parent / "dashboard" / "app.py"
+    try:
+        result = subprocess.run([
+            sys.executable, "-m", "streamlit", "run",
+            str(app_path),
+            "--server.port", str(port)
+        ])
+    except OSError as exc:
+        raise click.ClickException(f"Could not start dashboard: {exc}") from exc
+    sys.exit(result.returncode)
 
 
 @main.command()
@@ -273,8 +279,10 @@ VeritasChain Standards Organization
     """
     
     if output:
-        with open(output, 'w') as f:
-            f.write(report_text)
+        try:
+            write_report(input_file, output, report_text)
+        except (OSError, ValueError) as exc:
+            raise click.ClickException(f"Could not write report: {exc}") from exc
         click.echo(f"Report saved to: {output}")
     else:
         click.echo(report_text)
