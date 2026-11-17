@@ -143,6 +143,12 @@ See [regulatory relevance notes](docs/REGULATORY_MAPPING.md) for the boundary be
 
 ## Development and tests
 
+The [18 November signature repair](docs/ED25519-INPUT-POLICY-20261118.md)
+corrects PyNaCl backend selection and rejects small-order or noncanonical
+Ed25519 public keys/signature points and out-of-range scalars before either
+supported library verifies a signature. It preserves valid signed event bytes
+and does not establish CAP/VAP conformance or authenticate a file-declared key.
+
 ```bash
 pytest tests/ -v
 pytest tests/ --cov=cap_srp --cov-report=html

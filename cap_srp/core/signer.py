@@ -5,7 +5,7 @@ This module provides Ed25519 digital signature functionality for CAP-SRP events.
 
 Ed25519 is chosen because:
 1. Fast signing and verification
-2. Small key and signature sizes (32 bytes each)
+2. Small public keys (32 bytes) and signatures (64 bytes)
 3. Deterministic signatures (same input always produces same output)
 4. Strong security guarantees
 5. Widely supported (RFC 8032)
@@ -31,10 +31,59 @@ import base64
 from typing import Optional, Tuple
 from dataclasses import dataclass
 
+
+_ED25519_P = 2**255 - 19
+_ED25519_L = 2**252 + 27742317777372353535851937790883648493
+# Five y coordinates cover the eight points annihilated by multiplication by 8.
+# Both x signs are checked; the noncanonical x=0 aliases are rejected separately.
+_SMALL_ORDER_Y = {
+    0, 1, _ED25519_P - 1,
+    int.from_bytes(bytes.fromhex(
+        "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05"), "little"),
+    int.from_bytes(bytes.fromhex(
+        "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"), "little"),
+}
+
+
+def _admit_point(value: bytes, label: str) -> bytes:
+    """Apply this PoC's input policy before either verification backend.
+
+    RFC 8032 decoding requires canonical coordinates/signs. Rejecting all
+    small-order public keys and R values is an additional local restriction;
+    it does not define CAP or VAP normative conformance. Curve decoding and the
+    signature equation remain the responsibility of the cryptographic library.
+    """
+    if not isinstance(value, (bytes, bytearray, memoryview)):
+        raise ValueError(f"{label} must contain 32 bytes")
+    raw = bytes(value)
+    if len(raw) != 32:
+        raise ValueError(f"{label} must contain 32 bytes")
+    encoded = int.from_bytes(raw, "little")
+    y = encoded & (2**255 - 1)
+    if y >= _ED25519_P or (y in (1, _ED25519_P - 1) and encoded >> 255):
+        raise ValueError(f"{label} has noncanonical Ed25519 point encoding")
+    if y in _SMALL_ORDER_Y:
+        raise ValueError(f"{label} is a small-order Ed25519 point")
+    return raw
+
+
+def _verification_inputs(public_key: bytes, signature: bytes) -> Tuple[bytes, bytes]:
+    public_key = _admit_point(public_key, "Public key")
+    if not isinstance(signature, (bytes, bytearray, memoryview)):
+        raise ValueError("Signature must contain 64 bytes")
+    signature = bytes(signature)
+    if len(signature) != 64:
+        raise ValueError("Signature must contain 64 bytes")
+    _admit_point(signature[:32], "Signature R")
+    if int.from_bytes(signature[32:], "little") >= _ED25519_L:
+        raise ValueError("Signature scalar must be less than Ed25519 subgroup order")
+    return public_key, signature
+
+
 try:
     from nacl.signing import SigningKey, VerifyKey
     from nacl.encoding import Base64Encoder
-    from nacl.exceptions import BadSignature
+    from nacl.exceptions import BadSignatureError
     NACL_AVAILABLE = True
 except ImportError:
     NACL_AVAILABLE = False
@@ -212,12 +261,13 @@ class Ed25519Signer:
             VerificationResult: Contains is_valid and optional error
         """
         try:
+            _, signature = _verification_inputs(self.public_key, signature)
             if NACL_AVAILABLE and self._use_nacl:
                 self._verify_key.verify(data, signature)
             else:
                 self._public_key.verify(signature, data)
             return VerificationResult(is_valid=True)
-        except (BadSignature if NACL_AVAILABLE else InvalidSignature) as e:
+        except (BadSignatureError if NACL_AVAILABLE else InvalidSignature) as e:
             return VerificationResult(is_valid=False, error_message=str(e))
         except Exception as e:
             return VerificationResult(is_valid=False, error_message=f"Verification error: {e}")
@@ -259,6 +309,7 @@ class Ed25519Signer:
             VerificationResult: Contains is_valid and optional error
         """
         try:
+            public_key, signature = _verification_inputs(public_key, signature)
             if NACL_AVAILABLE:
                 verify_key = VerifyKey(public_key)
                 verify_key.verify(data, signature)
