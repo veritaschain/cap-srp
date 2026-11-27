@@ -221,6 +221,35 @@ class TestCAPLogger:
         assert proof.leaf_index == 0
         assert proof.tree_size == 2
         assert proof.root_hash == logger.merkle_root
+
+    @pytest.mark.parametrize(
+        ("indices", "attempts", "outcomes", "pending", "complete"),
+        [
+            ([0, 1], 1, 1, 0, True),   # A matched pair.
+            ([1, 2], 1, 1, 1, False),  # An outcome and the next attempt.
+            ([1], 0, 1, 0, False),     # Only an earlier attempt's outcome.
+        ],
+    )
+    def test_statistics_for_imported_window(
+        self, tmp_path, indices, attempts, outcomes, pending, complete
+    ):
+        source = CAPLogger()
+        first = source.log_attempt(prompt_hash=hash_data("first"))
+        source.log_generation(attempt_id=first.event_id, output_hash=hash_data("output"))
+        source.log_attempt(prompt_hash=hash_data("second"))
+
+        records = [source.events[i].to_dict() for i in indices]
+        path = tmp_path / "window.json"
+        path.write_text(json.dumps({"events": records}), encoding="utf-8")
+        logger = CAPLogger()
+        logger.import_events(path)
+
+        assert logger.get_statistics()["completeness"] == {
+            "is_complete": complete,
+            "attempts": attempts,
+            "outcomes": outcomes,
+            "pending": pending,
+        }
     
     def test_export_import_events(self):
         logger = CAPLogger(model_id="test-model")

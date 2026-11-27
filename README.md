@@ -43,6 +43,8 @@ COUNT(GEN_ATTEMPT) = COUNT(GEN) + COUNT(GEN_DENY) + COUNT(GEN_ERROR)
 
 For a closed set of recorded attempts, outcomes must be linked by attempt ID and checked for missing, orphan and duplicate outcomes. **Equal aggregate counts alone are insufficient.** Attempts still in progress, or outcomes crossing a time-window boundary, must be distinguished from missing terminal outcomes; a failed check does not by itself prove fraud.
 
+`CAPLogger.get_statistics()` uses this same ID-based check for the dashboard’s Local Outcome Coverage. Its `pending` count is the number of recorded attempt IDs with no outcome in the supplied records.
+
 **Independent completeness claims cover recorded and externally anchored requests, at anchor/batch granularity.** Hashes, signatures, full batch scope and independently authenticated commitments must be verified separately. A Merkle inclusion proof shows membership of one event, not completeness of the entire batch.
 
 What these mechanisms cannot establish:
