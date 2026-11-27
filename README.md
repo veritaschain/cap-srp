@@ -84,6 +84,8 @@ From the repository root, `streamlit run cap_srp/dashboard/app.py` remains avail
 python examples/demo_generate_events.py --events 1000 --output data/demo_events.json
 ```
 
+The example, `cap-srp generate`, and the dashboard’s Custom Demo group requests into sessions of ten. Filter by `session_id` to see both the attempts and their outcomes for one session.
+
 The generated records are synthetic. The local schemas describe this PoC's wire format; they are not canonical CAP/VAP conformance tests. Schema validation checks representation, not authenticity; see the [local wire contract](schemas/README.md#local-wire-contract).
 
 ### 4. Verify the exported records and save a report

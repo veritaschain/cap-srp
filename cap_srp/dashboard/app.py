@@ -465,17 +465,20 @@ def render_sidebar():
             if random.random() * 100 < denial_rate:
                 logger.log_denial(
                     attempt_id=attempt.event_id,
+                    session_id=attempt.session_id,
                     risk_category=random.choice(risk_categories),
                     risk_score=0.5 + random.random() * 0.5
                 )
             elif random.random() > 0.02:
                 logger.log_generation(
                     attempt_id=attempt.event_id,
+                    session_id=attempt.session_id,
                     output_hash=hash_data(f"output_{i}")
                 )
             else:
                 logger.log_error(
                     attempt_id=attempt.event_id,
+                    session_id=attempt.session_id,
                     error_code="E001",
                     error_message="Random error"
                 )
