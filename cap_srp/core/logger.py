@@ -67,6 +67,7 @@ from cap_srp.core.events import (
 from cap_srp.core.serialization import load_event_log
 from cap_srp.core.signer import Ed25519Signer, SignatureResult
 from cap_srp.core.merkle import MerkleTree, InclusionProof
+from cap_srp.core.verifier import CompletenessVerifier
 
 
 class CAPLogger:
@@ -392,10 +393,11 @@ class CAPLogger:
             dict: Statistics including counts by type, risk category breakdown, etc.
         """
         with self._lock:
-            attempts = len([e for e in self._events if e.event_type == EventType.GEN_ATTEMPT])
-            generations = len([e for e in self._events if e.event_type == EventType.GEN])
-            denials = len([e for e in self._events if e.event_type == EventType.GEN_DENY])
-            errors = len([e for e in self._events if e.event_type == EventType.GEN_ERROR])
+            completeness = CompletenessVerifier().verify(self._events)
+            attempts = completeness.total_attempts
+            generations = completeness.total_generations
+            denials = completeness.total_denials
+            errors = completeness.total_errors
             
             # Denial breakdown by category
             denial_events = [e for e in self._events if e.event_type == EventType.GEN_DENY]
@@ -403,10 +405,6 @@ class CAPLogger:
             for event in denial_events:
                 cat = event.risk_category.value if event.risk_category else "UNKNOWN"
                 category_counts[cat] = category_counts.get(cat, 0) + 1
-            
-            # Completeness check
-            outcomes_total = generations + denials + errors
-            is_complete = (attempts == outcomes_total)
             
             return {
                 "total_events": len(self._events),
@@ -418,10 +416,10 @@ class CAPLogger:
                 "error_rate": errors / attempts if attempts > 0 else 0,
                 "denial_categories": category_counts,
                 "completeness": {
-                    "is_complete": is_complete,
+                    "is_complete": completeness.is_valid,
                     "attempts": attempts,
-                    "outcomes": outcomes_total,
-                    "pending": attempts - outcomes_total
+                    "outcomes": completeness.total_outcomes,
+                    "pending": len(completeness.pending_attempts)
                 },
                 "merkle_root": self._merkle_tree.root,
                 "merkle_size": self._merkle_tree.size
