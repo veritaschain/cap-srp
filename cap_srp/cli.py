@@ -73,18 +73,21 @@ def generate(events, denial_rate, error_rate, output, model_id, seed, verbose):
         if roll < denial_rate:
             logger.log_denial(
                 attempt_id=attempt.event_id,
+                session_id=attempt.session_id,
                 risk_category=random.choice(risk_categories),
                 risk_score=0.5 + random.random() * 0.5
             )
         elif roll < denial_rate + error_rate:
             logger.log_error(
                 attempt_id=attempt.event_id,
+                session_id=attempt.session_id,
                 error_code="E001",
                 error_message="Demo error"
             )
         else:
             logger.log_generation(
                 attempt_id=attempt.event_id,
+                session_id=attempt.session_id,
                 output_hash=hash_data(f"output_{i}")
             )
         
